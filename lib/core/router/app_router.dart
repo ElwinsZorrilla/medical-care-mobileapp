@@ -13,6 +13,7 @@ import '../../features/citas/presentation/screens/mis_citas_screen.dart';
 import '../../features/citas/presentation/screens/reserva_screen.dart';
 import '../../features/historial/presentation/screens/historial_screen.dart';
 import '../../features/historial/presentation/screens/registro_consulta_screen.dart';
+import '../../features/perfil/presentation/screens/edicion_perfil_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
@@ -121,6 +122,13 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const HistorialScreen(),
       ),
       GoRoute(
+        path: Rutas.edicionPerfil,
+        name: 'edicionPerfil',
+        builder: (context, state) => EdicionPerfilScreen(
+          tipo: ref.read(sesionActualProvider).usuario?.tipo,
+        ),
+      ),
+      GoRoute(
         path: Rutas.perfil,
         name: 'perfil',
         builder: (context, state) => const PerfilScreen(),
@@ -152,6 +160,9 @@ abstract final class Rutas {
 
   /// Comun a los dos roles: la pantalla resuelve cual mostrar segun el token.
   static const String perfil = '/perfil';
+
+  /// Crear o editar el perfil propio — RF-10. Tambien comun a los dos roles.
+  static const String edicionPerfil = '/perfil/editar';
 
   /// Buscar medico. La abre el paciente desde su listado de citas.
   static const String busqueda = '/buscar';

@@ -38,6 +38,13 @@ class PerfilScreen extends ConsumerWidget {
       acciones: [
         // RF-27: la puerta al historial clinico. Sin esto la pantalla existia
         // con sus 11 pruebas de widget y nadie podia abrirla.
+        // RF-10: la puerta a la edicion. Estuvo ausente hasta F15: la capa de
+        // datos existia con sus pruebas y no habia donde editar.
+        IconButton(
+          onPressed: () => context.push(Rutas.edicionPerfil),
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Editar mis datos',
+        ),
         IconButton(
           onPressed: () => context.push(Rutas.historial),
           icon: const Icon(Icons.folder_outlined),
@@ -104,10 +111,14 @@ class _PerfilPacienteVista extends ConsumerWidget {
     return _Estados<PerfilPaciente>(
       valor: asincrono,
       alRecargar: () => ref.invalidate(miPerfilPacienteProvider),
-      vacio: const EmptyState(
+      vacio: EmptyState(
         icono: Icons.badge_outlined,
         titulo: 'Aún no completas tu perfil',
         detalle: 'Necesitamos tus datos para que un médico pueda atenderte.',
+        // Un estado vacio que dice que falta algo y no ofrece como hacerlo
+        // deja al usuario sin salida.
+        accion: 'Completar perfil',
+        onAccion: () => context.push(Rutas.edicionPerfil),
       ),
       contenido: (p) => ListView(
         padding: const EdgeInsets.all(Space.lg),
@@ -181,12 +192,14 @@ class _PerfilMedicoVista extends ConsumerWidget {
     return _Estados<PerfilMedico>(
       valor: asincrono,
       alRecargar: () => ref.invalidate(miPerfilMedicoProvider),
-      vacio: const EmptyState(
+      vacio: EmptyState(
         icono: Icons.medical_information_outlined,
         titulo: 'Aún no completas tu perfil',
         detalle:
             'Sin tu exequátur no podemos validarte ni mostrarte a los '
             'pacientes.',
+        accion: 'Completar perfil',
+        onAccion: () => context.push(Rutas.edicionPerfil),
       ),
       contenido: (m) => ListView(
         padding: const EdgeInsets.all(Space.lg),

@@ -61,7 +61,7 @@ el APK **no** se compila en el contenedor y cómo se regeneran los goldens.
 
 ## Estado
 
-De los **37 requerimientos funcionales**: 22 completos, 5 parciales con su
+De los **37 requerimientos funcionales**: 23 completos, 4 parciales con su
 razón escrita, y **10 sin backend**.
 
 Los 10 (RF-28..RF-37 — notificaciones, chat y videollamada) no son trabajo
@@ -80,8 +80,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 86.8 % (excluyendo código generado) |
-| Pruebas | 471 (467 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 84.6 % (excluyendo código generado) |
+| Pruebas | 481 (477 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

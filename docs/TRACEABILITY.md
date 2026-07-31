@@ -38,7 +38,7 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-07 | Perfil paciente | F05 | `features/perfil/.../perfil_screen.dart` | `perfil_repository_test.dart`, `perfil_screen_test.dart` | ✅ |
 | RF-08 | Perfil médico | F05 | misma pantalla, resuelta por rol del token | mapeo de especialidades y tarifa | ✅ |
 | RF-09 | ID desde el token | F05 | `PerfilApi` usa `/patients/me` y `/doctors/me`; ninguna ruta recibe id del cliente | ✅ |
-| RF-10 | Editar solo el propio | F05 | La **lectura** funciona y el backend impide tocar lo ajeno (PATCH sin id para paciente, 403 para medico ajeno), con sus pruebas. Pero **no hay pantalla de edicion**: los cinco metodos de escritura de `PerfilRepository` no tienen llamador en `lib/`, solo en pruebas. Detectado en F15 recorriendo el codigo, no la matriz | pruebas de repositorio: 403 + PATCH sin campos no editables | ⚠️ falta la interfaz |
+| RF-10 | Editar solo el propio | F05,F15 | `edicion_perfil_screen.dart`, una pantalla para los dos roles. Ninguna firma recibe id de usuario: el backend resuelve el titular desde el token. El documento y el exequatur quedan deshabilitados al editar porque el backend no los acepta en el PATCH, y los campos se precargan para que un PATCH no borre lo que el usuario no toco | `perfil_repository_test.dart` (403 + PATCH sin campos no editables) + `edicion_perfil_screen_test.dart` (10) | ✅ |
 | RF-11 | Estado de verificación | F05 | `BadgeVerificacion` — color + glifo + etiqueta + **explicación** de qué implica | 3 estados con prueba de widget | ✅ |
 | RF-12 | Catálogo especialidades | F06 | `busqueda` — filtro horizontal con las 10 sembradas | `busqueda_repository_test.dart` | ✅ |
 | RF-13 | Médico ↔ especialidad | F06 | Especialidades anidadas en cada médico del listado | prueba de `especialidadesTexto` | ✅ |
@@ -92,10 +92,10 @@ tomarla al front en solitario.
 | RNF-11 | Arquitectura modular | F01,F04,F05,F13 | Seis módulos con las tres capas; lo compartido de dominio (`Especialidad`, `TipoUsuario`, `FechaCalendario`, `PerfilMedico`) subió a `core/`. **Corregido en F13:** esta fila decía "ninguno importa del otro" y era falso — cinco features importan `dioClienteProvider` y `sesionActualProvider` desde `features/auth/presentation/` (7 archivos). `test/arquitectura_test.dart` vuelve la regla ejecutable y lleva el registro; el rediseño de dónde vive la sesión queda pendiente. Ver `HARDENING.md` §7.b | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
-| RNF-14 | Pruebas por modulo | todas,F13,F15 | **86.8 %** de linea, 471 pruebas (467 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. Ver `docs/HARDENING.md` | ✅ |
+| RNF-14 | Pruebas por modulo | todas,F13,F15 | **84.6 %** de linea, 481 pruebas (477 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. Ver `docs/HARDENING.md` | ✅ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
-| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **471 pruebas, cobertura 86.8 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
+| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **481 pruebas, cobertura 84.6 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `core/time/app_time.dart` es el único borde de conversión; desfase fijo −4 h para coincidir con el backend (ADR-005). `test/core/time/disciplina_utc_test.dart` recorre `lib/` y falla ante `DateTime.now()` o formateo fuera de `AppTime` — 24 pruebas, comprobada falsificable | ✅ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
 
