@@ -98,26 +98,45 @@ semana. F00 lo confirma contra el Swagger real (RNF-15 garantiza que existe).
 
 ## 3. Paso ④ VERIFY — comandos exactos
 
-Un solo comando, todo o nada. Guardar como `scripts/verify.sh`:
+Un solo comando, todo o nada. El script vive en `scripts/verify.sh`:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-dart format --set-exit-if-changed lib test
-dart run build_runner build --delete-conflicting-outputs
-flutter analyze --fatal-infos --fatal-warnings
-flutter test --coverage
-
-# Cobertura mínima por fase
-pct=$(lcov --summary coverage/lcov.info 2>&1 | grep -oP 'lines\.*: \K[0-9.]+')
-awk -v p="$pct" 'BEGIN { exit (p >= 70) ? 0 : 1 }' \
-  || { echo "FALLA: cobertura ${pct}% < 70%"; exit 1; }
-
-echo "VERIFY OK"
+./scripts/verify.sh
 ```
 
+Corre, en orden: `dart format --set-exit-if-changed` · `build_runner` ·
+`flutter analyze --fatal-infos --fatal-warnings` · `flutter test --coverage` ·
+umbral de cobertura (70% por defecto, `COBERTURA_MINIMA` lo cambia).
+
 Si `verify.sh` no sale en 0, **no se pasa al gate**. Se vuelve a ③.
+
+**Dos correcciones respecto del plan original**, hechas en F01 porque el script
+tal como estaba escrito no corría:
+
+- La cobertura se calcula leyendo `coverage/lcov.info` con `awk`, no con
+  `lcov --summary | grep -oP`. `lcov` no existe en Windows y el `grep` de Git
+  Bash rechaza `-P` ("supports only unibyte and UTF-8 locales"). Así corre
+  igual en Windows, Linux y en el contenedor, sin instalar nada.
+- Los archivos generados (`*.g.dart`, `*.freezed.dart`) quedan fuera del
+  cálculo. Nadie escribe pruebas para un `.g.dart`: contarlos mide la suerte
+  del generador, no la del código.
+- `--delete-conflicting-outputs` se quitó: `build_runner` 2.15 lo eliminó y ya
+  es el comportamiento por defecto.
+
+### Requisito del entorno: la ruta no puede tener acentos
+
+**El proyecto tiene que vivir en una ruta ASCII.** El compilador AOT de Dart no
+escribe en rutas con caracteres no-ASCII en Windows, y `build_runner` —paso 2
+de este script— falla con:
+
+```
+Error: Unable to write file: ...\.dart_tool\build\entrypoint\build.dart.aot
+```
+
+Verificado en F01: la misma copia falla en una ruta con `á` y compila en una sin
+ella, dentro y fuera de OneDrive. Una junction ASCII **no** sirve: Dart la
+resuelve de vuelta a la ruta real. Por eso el workspace no vive bajo
+`OneDrive - Universidad APEC - Académico`.
 
 ---
 

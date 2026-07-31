@@ -1,72 +1,46 @@
-# Levanta el front web contra el backend para pruebas end-to-end.
-# El backend vive en su propio repo; acá solo se consume.
-#
-#   docker compose up --build
-#   → front  http://localhost:8080
-#   → api    http://localhost:3000/docs   (Swagger, RNF-15)
+# Docker
 
-name: medicare
+## Qué se puede y qué no
 
-services:
-  front-web:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: web
-      args:
-        API_BASE_URL: http://localhost:3000
-        SOCKET_URL: ws://localhost:3000
-    ports: ["8080:8080"]
-    depends_on:
-      api: { condition: service_healthy }
-    restart: unless-stopped
+**No se puede** meter una app Android en un contenedor y correrla. Un APK
+necesita Android Runtime; Docker no lo provee. Cualquiera que diga
+"dockericé mi app Flutter móvil" en realidad hizo una de estas dos cosas:
 
-  api:
-    # Ajustar al repo real del back. Si el back no tiene Dockerfile,
-    # levantarlo aparte y dejar solo db/cache acá.
-    build:
-      context: ../../medical-care-back
-      dockerfile: Dockerfile
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgres://medicare:medicare@db:5432/medicare
-      REDIS_URL: redis://cache:6379
-      TZ: UTC                      # RNF-18: el servidor vive en UTC
-    ports: ["3000:3000"]
-    depends_on:
-      db:    { condition: service_healthy }
-      cache: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 20s
+**Lo que sí hace este setup:**
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: medicare
-      POSTGRES_PASSWORD: medicare
-      POSTGRES_DB: medicare
-      TZ: UTC
-    volumes: ["pgdata:/var/lib/postgresql/data"]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medicare"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+1. **Build reproducible** — el SDK, las dependencias y los flags quedan fijados
+   en la imagen. El APK que sale de tu máquina es byte a byte el mismo que sale
+   de CI y el de tu compañero. Esto es lo que resuelve el "en mi máquina sí
+   compila".
+2. **Target web servido con nginx** — Flutter web corriendo en un contenedor,
+   levantado junto al backend con compose. Sirve para la defensa del proyecto y
+   para pruebas end-to-end sin emulador.
 
-  cache:
-    image: redis:7-alpine
-    command: ["redis-server", "--save", "60", "1"]
-    volumes: ["redisdata:/data"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+Eso cubre RNF-17 de verdad. Decir que se "contenerizó la app móvil" sin esta
+distinción es lo que un jurado técnico va a picar en la presentación.
 
-volumes:
-  pgdata:
-  redisdata:
+## Uso
+
+```bash
+# APK + AAB firmables → ./dist
+docker build --target export -o ./dist \
+  --build-arg API_BASE_URL=https://api.tu-dominio.do \
+  --build-arg SOCKET_URL=wss://api.tu-dominio.do \
+  -f docker/Dockerfile .
+
+# Solo verificar (format + analyze + test), sin producir artefactos
+docker build --target verify -f docker/Dockerfile .
+
+# Front web + back + db + redis
+docker compose -f docker/docker-compose.yml up --build
+```
+
+## Notas
+
+- `--target verify` es la misma barra que el gate local. Si falla acá, falla el
+  pipeline. No se saltea.
+- El firmado de release **no ocurre en el contenedor**. El keystore nunca entra
+  a una imagen. Se firma fuera, con las llaves en el secret store de CI.
+- `TZ: UTC` en db y api no es decorativo: si el contenedor de Postgres arranca
+  en `America/Santo_Domingo`, los `TIMESTAMPTZ` se guardan bien pero cualquier
+  `now()` en una migración sale corrido. (RNF-18)

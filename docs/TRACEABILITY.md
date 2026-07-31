@@ -70,20 +70,20 @@ tomarla al front en solitario.
 | RNF-01 | Contraseñas cifradas | — | Responsabilidad del back. El front solo verifica que nunca vuelva en la respuesta. | ⬜ |
 | RNF-02 | JWT + guards de rol | F03,F04 | | ⬜ |
 | RNF-03 | Refresh cifrado en reposo | F03 | `flutter_secure_storage` | ⬜ |
-| RNF-04 | Sin secretos en código | F01 | `Env` + hook pre-commit | ⬜ |
+| RNF-04 | Sin secretos en código | F01 | `core/config/env.dart` (`String.fromEnvironment`, valida al arrancar) + hook pre-commit · 6 pruebas | ✅ |
 | RNF-05 | Cabeceras, CORS, rate limit | F14 | `nginx.conf` | ⬜ |
 | RNF-06 | Historial restringido | F09 | | ⬜ |
 | RNF-07 | Listados con paginación | F06 | | ⬜ |
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
 | RNF-10 | Concurrencia sin duplicar | F08 | Manejo de 409 | ⬜ |
-| RNF-11 | Arquitectura modular | F01 | | ⬜ |
+| RNF-11 | Arquitectura modular | F01 | `lib/core/{config,router}` creado; `lib/features/` se puebla por fase (F04+). La modularidad se demuestra cuando haya más de un módulo. | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
-| RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` | ⬜ |
+| RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
 | RNF-14 | Pruebas por módulo | todas | Cobertura ≥ 80% | ⬜ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía `Failure` | ⬜ |
-| RNF-17 | Docker | F14 | | ⬜ |
+| RNF-17 | Docker | F14 | `FLUTTER_VERSION` alineado a 3.44.5 en F01; falta verificar el build | ⬜ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `AppTime` + auditoría | ⬜ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
 

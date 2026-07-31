@@ -135,16 +135,28 @@ Es el hallazgo más caro del proyecto, porque **F10, F11 y F12 son tres fases
 completas del loop sin nada contra qué construir.** No es un detalle de
 contrato: es un tercio de las fases de features.
 
-**Decisión requerida antes de llegar a F10** — las opciones honestas son:
+### El backend está cerrado
 
-1. **El backend las implementa.** Es lo correcto, y hay que saber si entra en el
-   plazo del equipo.
-2. **Se reduce el alcance del front.** F10/F11/F12 salen del plan y los 10 RF se
-   declaran fuera de alcance en `TRACEABILITY.md`, con la razón. Defendible ante
-   un jurado si está escrito.
-3. **Se construye contra un mock.** UI real contra datos falsos. Se ve bien en
-   la defensa y no funciona. Si se elige, hay que decirlo explícitamente en la
-   presentación — no dejar que parezca funcional.
+Verificado el 2026-07-30 sobre el repo real:
+
+- una sola rama (`main`), sin ramas de feature pendientes;
+- **cero pull requests abiertos**;
+- último commit: `Merge pull request #10 from RafaelEspinal0/chore/cierre-proyecto`.
+
+**No hay trabajo en curso sobre estos módulos.** La opción "esperar a que el
+backend los implemente" está descartada salvo que el equipo reabra el proyecto.
+
+**Decisión requerida antes de llegar a F10** — quedan dos caminos honestos:
+
+1. **Reducir el alcance del front.** F10/F11/F12 salen del plan y los 10 RF se
+   declaran fuera de alcance en `TRACEABILITY.md`, con la razón escrita.
+   Defendible ante un jurado: el requisito no se cumple *y se sabe por qué*.
+2. **Construir contra un mock.** UI real contra datos falsos, detrás de las
+   mismas interfaces de repositorio que usaría la API. Se ve completo en la
+   defensa y no funciona contra nada. Si se elige, **hay que declararlo en la
+   presentación** — el riesgo no es técnico, es que parezca funcional.
+
+Lo que no es una opción: construirlo contra un mock y no decirlo.
 
 No es decisión del front tomarla solo.
 

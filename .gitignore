@@ -30,6 +30,11 @@ build/
 coverage/
 doc/api/
 
+# Lo regenera `flutter pub get` a partir de pubspec.lock. Versionarlo genera
+# conflictos en cada merge y no aporta nada reproducible.
+.flutter-plugins
+.flutter-plugins-dependencies
+
 # Codigo generado por build_runner: se regenera, no se versiona.
 *.freezed.dart
 *.g.dart

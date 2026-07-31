@@ -1,0 +1,61 @@
+# Sin este archivo, el `COPY . .` del stage `verify` mete al contenedor el
+# .dart_tool de la maquina que corre el build. Ese directorio guarda rutas
+# ABSOLUTAS del host:
+#
+#   file:///C:/Users/ezorr/AppData/Local/Pub/Cache/hosted/pub.dev/...
+#
+# Dentro de Linux no existen, y pisan el package_config.json valido que
+# genero el stage `deps`. El build falla —o resuelve paquetes de forma
+# impredecible— por una razon que no aparece en ningun log obvio.
+#
+# Es justo lo contrario del objetivo del Dockerfile: que el artefacto no
+# dependa de la maquina que lo compila.
+
+# ── Salidas de build y cache local ───────────────────────────────────────
+.dart_tool/
+build/
+coverage/
+dist/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# ── Control de versiones y herramientas ──────────────────────────────────
+.git/
+.github/
+.githooks/
+.gitignore
+.gitattributes
+.review/
+
+# ── Artefactos nativos: se regeneran dentro del contenedor ───────────────
+android/.gradle/
+android/local.properties
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# ── Documentacion: no entra al artefacto ─────────────────────────────────
+docs/
+prompts/
+LOOP.md
+*.md
+!pubspec.yaml
+
+# ── Editores y SO ────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secretos y firma: nunca entran a una imagen ──────────────────────────
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pem
+key.properties
+**/google-services.json
+**/GoogleService-Info.plist

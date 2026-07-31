@@ -123,39 +123,49 @@ La UI no traduce códigos HTTP — si un widget tiene un `switch` sobre
 
 ## Dependencias
 
+**Resueltas en F01** contra Flutter 3.44.5 / Dart 3.12.2. Ver `pubspec.yaml`.
+
 ```yaml
 dependencies:
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-  go_router: ^14.6.0
-  dio: ^5.7.0
-  freezed_annotation: ^2.4.4
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
+  go_router: ^17.3.0
+  dio: ^5.11.0
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
-  flutter_secure_storage: ^9.2.2
-  google_fonts: ^6.2.1
-  intl: ^0.19.0
-  timezone: ^0.9.4                 # RNF-18
-  socket_io_client: ^2.0.3         # RF-32 — confirmar en F00
+  flutter_secure_storage: ^10.3.1
+  google_fonts: ^8.2.0
+  intl: ^0.20.2                    # lo fija flutter_localizations
+  timezone: ^0.11.1                # RNF-18
   cached_network_image: ^3.4.1
-  file_picker: ^8.1.6              # RF-34
-  flutter_local_notifications: ^18.0.1
-  firebase_messaging: ^15.1.5      # RF-28 — confirmar proveedor en F00
 
 dev_dependencies:
-  build_runner: ^2.4.13
-  freezed: ^2.5.7
-  json_serializable: ^6.9.0
-  riverpod_generator: ^2.6.3
-  custom_lint: ^0.7.0
-  riverpod_lint: ^2.6.3
-  mocktail: ^1.0.4
-  golden_toolkit: ^0.15.0
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.8.1
+  riverpod_lint: ^3.1.0
+  build_runner: ^2.15.1
+  freezed: ^3.2.3
+  json_serializable: ^6.11.2
+  riverpod_generator: ^4.0.0+1
+  mocktail: ^1.0.5
+  alchemist: ^0.12.1               # goldens (F02)
 ```
 
-Las versiones son punto de partida. F01 las resuelve con `flutter pub get` real
-y fija `pubspec.lock`. **Confirmar en F00** las dos marcadas: el paquete de
-realtime depende de si el back usa Socket.IO o WebSocket pelado, y el de push
-depende del proveedor que ya esté configurado del lado servidor.
+**Las versiones del plan original estaban varios majors atrás y no sirven.**
+No es cuestión de preferencia: Riverpod 2.x y Freezed 2.x no soportan Dart
+3.12. Lo que cambia para quien escriba código:
+
+- **Freezed 3** — las clases se declaran `abstract class X with _$X`, no
+  `@freezed class X with _$X`. Las uniones cambiaron de sintaxis.
+- **Riverpod 3** — `Ref` dejó de ser genérico: es `Ref`, no `Ref<T>`.
+- **go_router 17** — tres majores desde el 14 que asumía el diseño; revisar
+  `redirect` y `refreshListenable` antes de escribir los guards de F04.
+- **`golden_toolkit` está descontinuado.** Se reemplaza por `alchemist`.
+
+**Ausentes a propósito:** `socket_io_client`, `firebase_messaging`,
+`flutter_local_notifications` y `file_picker`. F00 verificó que el backend no
+tiene realtime, push ni video — no son "confirmar en F00", ya se confirmó que
+no existen. Ver `BACKEND_ISSUES.md` #5.
 
 ---
 

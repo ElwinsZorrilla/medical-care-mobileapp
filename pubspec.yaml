@@ -1,0 +1,74 @@
+name: medicare
+description: Gestión de citas médicas. Cliente móvil.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Estado. Riverpod 3 — no 2.x: esa linea no soporta Dart 3.12.
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
+
+  # Navegacion y guards por rol (RF-06)
+  go_router: ^17.3.0
+
+  # Red
+  dio: ^5.11.0
+
+  # Modelos inmutables + json
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+
+  # Tokens en reposo cifrado (RNF-03). Nunca SharedPreferences.
+  flutter_secure_storage: ^10.3.1
+
+  # Tipografia del design system: Archivo, Public Sans, IBM Plex Mono
+  google_fonts: ^8.2.0
+
+  # Formato de fecha es_DO + zona horaria (RNF-18).
+  # intl lo fija flutter_localizations del SDK: no subir sin verificar.
+  intl: ^0.20.2
+  timezone: ^0.11.1
+
+  cached_network_image: ^3.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.8.1
+  riverpod_lint: ^3.1.0
+
+  build_runner: ^2.15.1
+  freezed: ^3.2.3
+  json_serializable: ^6.11.2
+  riverpod_generator: ^4.0.0+1
+
+  mocktail: ^1.0.5
+
+  # Goldens del StatusRail (F02). Reemplaza a golden_toolkit, descontinuado.
+  alchemist: ^0.12.1
+
+flutter:
+  uses-material-design: true
+
+# ── Dependencias deliberadamente ausentes ─────────────────────────────────
+#
+# socket_io_client, firebase_messaging, flutter_local_notifications y
+# file_picker NO estan aca a proposito.
+#
+# F00 verifico contra el backend real que no existe transporte de tiempo
+# real, ni proveedor de push, ni de video: chat, notificaciones y video
+# tienen tabla y entidad, pero cero endpoints. Declararlas ahora obligaria
+# a configuracion nativa (google-services.json, permisos) para features que
+# no tienen contra que hablar.
+#
+# Se agregan el dia que exista backend. Ver docs/BACKEND_ISSUES.md #5.

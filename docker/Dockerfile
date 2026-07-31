@@ -14,7 +14,7 @@
 # ─────────────────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim AS flutter-sdk
 
-ARG FLUTTER_VERSION=3.32.0
+ARG FLUTTER_VERSION=3.44.5
 ENV FLUTTER_HOME=/opt/flutter \
     PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:$PATH \
     PUB_CACHE=/opt/pub-cache
@@ -43,10 +43,7 @@ RUN --mount=type=cache,target=/opt/pub-cache flutter pub get
 # ─────────────────────────────────────────────────────────────────────────
 FROM deps AS verify
 COPY . .
-RUN dart format --set-exit-if-changed lib test \
-    && dart run build_runner build --delete-conflicting-outputs \
-    && flutter analyze --fatal-infos --fatal-warnings \
-    && flutter test
+RUN ./scripts/verify.sh
 
 # ─────────────────────────────────────────────────────────────────────────
 # Artefactos Android
