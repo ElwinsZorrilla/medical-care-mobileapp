@@ -2,7 +2,11 @@
 # Puerta de calidad. Todo o nada: si esto no sale en 0, no se pasa al gate.
 set -euo pipefail
 
-COBERTURA_MINIMA=${COBERTURA_MINIMA:-70}
+# RNF-14 pide 80%. El piso arranco en 70 mientras se construian los modulos;
+# desde F13 la cobertura real es 85%, asi que el piso sube al valor del
+# requerimiento: dejarlo en 70 permitiria caer por debajo de lo exigido sin
+# que la puerta dijera nada.
+COBERTURA_MINIMA=${COBERTURA_MINIMA:-80}
 
 cd "$(dirname "$0")/.."
 

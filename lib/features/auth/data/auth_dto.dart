@@ -62,8 +62,13 @@ abstract class UsuarioDto with _$UsuarioDto {
     required String estado,
     String? telefono,
     String? urlFoto,
-    DateTime? fechaCreacion,
-    DateTime? ultimoAcceso,
+    // `String` y no `DateTime`, como en los otros cinco DTO del proyecto.
+    // Declararlos `DateTime` hace que `json_serializable` emita
+    // `DateTime.parse(...)` **sin** `.toUtc()`: si el servidor mandara un
+    // instante sin sufijo `Z`, quedaría en hora del dispositivo dentro del
+    // DTO. La conversión pertenece al repositorio, vía `AppTime` (RNF-18).
+    String? fechaCreacion,
+    String? ultimoAcceso,
   }) = _UsuarioDto;
 
   factory UsuarioDto.fromJson(Map<String, dynamic> json) =>

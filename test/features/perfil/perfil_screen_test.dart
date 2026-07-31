@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medicare/core/domain/tipo_usuario.dart';
+import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
 import 'package:medicare/core/widgets/widgets.dart';
 import 'package:medicare/features/auth/domain/usuario.dart';
@@ -91,6 +92,10 @@ void main() {
   }) async {
     await tester.pumpWidget(
       ProviderScope(
+        // La misma politica que main.dart. Con el default de Riverpod un
+        // fallo se queda en AsyncLoading ~38 s y el ErrorState no llega a
+        // pintarse: la prueba verificaria algo que la app no hace.
+        retry: PoliticaReintento.decidir,
         overrides: [
           sesionActualProvider.overrideWith(
             () => _SesionFalsa(Usuario(id: 9, correo: 'a@b.com', tipo: rol)),

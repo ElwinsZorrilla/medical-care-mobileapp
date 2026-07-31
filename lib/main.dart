@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app.dart';
 import 'core/config/env.dart';
+import 'core/network/politica_reintento.dart';
 import 'core/time/app_time.dart';
 
 Future<void> main() async {
@@ -25,5 +26,10 @@ Future<void> main() async {
   // el único no cosmético de esa lista.
   await AppTime.init();
 
-  runApp(const ProviderScope(child: MedicareApp()));
+  // Sin `retry`, Riverpod reintenta cualquier fallo 10 veces durante ~38 s y
+  // mantiene el estado en `AsyncLoading`: el usuario ve el skeleton todo ese
+  // rato en vez del error. Ver core/network/politica_reintento.dart.
+  runApp(
+    const ProviderScope(retry: PoliticaReintento.decidir, child: MedicareApp()),
+  );
 }

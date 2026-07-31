@@ -77,14 +77,14 @@ tomarla al front en solitario.
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
 | RNF-10 | Concurrencia sin duplicar | F08 | El backend lo garantiza (bloqueo pesimista + índice único, verificado en F00 con carrera real). El front refresca la grilla y avisa; **nunca reintenta en silencio** | ✅ |
-| RNF-11 | Arquitectura modular | F01,F04,F05 | Dos módulos independientes (`auth`, `perfil`) con las tres capas. Ninguno importa del otro: lo compartido (`Especialidad`, `TipoUsuario`, `FechaCalendario`) subió a `core/domain/`. | ✅ |
+| RNF-11 | Arquitectura modular | F01,F04,F05,F13 | Seis módulos con las tres capas; lo compartido de dominio (`Especialidad`, `TipoUsuario`, `FechaCalendario`, `PerfilMedico`) subió a `core/`. **Corregido en F13:** esta fila decía "ninguno importa del otro" y era falso — cinco features importan `dioClienteProvider` y `sesionActualProvider` desde `features/auth/presentation/` (7 archivos). `test/arquitectura_test.dart` vuelve la regla ejecutable y lleva el registro; el rediseño de dónde vive la sesión queda pendiente. Ver `HARDENING.md` §7.b | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
-| RNF-14 | Pruebas por módulo | todas | Cobertura ≥ 80% | ⬜ |
+| RNF-14 | Pruebas por módulo | todas,F13 | **86.0 %** de línea (2297/2672), 445 pruebas, excluyendo código generado. Ver `docs/HARDENING.md` | ✅ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
 | RNF-17 | Docker | F14 | `FLUTTER_VERSION` alineado a 3.44.5 en F01; falta verificar el build | ⬜ |
-| RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `AppTime` + auditoría | ⬜ |
+| RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `core/time/app_time.dart` es el único borde de conversión; desfase fijo −4 h para coincidir con el backend (ADR-005). `test/core/time/disciplina_utc_test.dart` recorre `lib/` y falla ante `DateTime.now()` o formateo fuera de `AppTime` — 24 pruebas, comprobada falsificable | ✅ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
 
 Cinco RNF son del backend, no del front. Están listados igual porque el jurado

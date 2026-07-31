@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
 import 'package:medicare/core/widgets/widgets.dart';
 import 'package:medicare/features/agenda/data/agenda_api.dart';
@@ -89,6 +90,10 @@ void main() {
     final api = _ApiFalsa(status: status, franjas: franjas, demora: demora);
     await tester.pumpWidget(
       ProviderScope(
+        // La misma politica que main.dart. Con el default de Riverpod un
+        // fallo se queda en AsyncLoading ~38 s y el ErrorState no llega a
+        // pintarse: la prueba verificaria algo que la app no hace.
+        retry: PoliticaReintento.decidir,
         overrides: [
           agendaRepositoryProvider.overrideWithValue(AgendaRepository(api)),
         ],

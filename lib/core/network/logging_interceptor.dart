@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'redactor.dart';
+
 /// Log de red **con redacción**, solo en debug.
 ///
 /// Un log con datos clínicos es una fuga (RNF-06). En esta app pasan por la
@@ -10,41 +12,20 @@ import 'package:flutter/foundation.dart';
 /// puede terminar en logcat, donde cualquier app con permiso de lectura de
 /// logs —o cualquiera con el teléfono en la mano y `adb`— lo ve.
 ///
-/// La lista de campos sensibles es **allowlist invertida a propósito**: se
-/// redacta por nombre de campo conocido y, ante la duda, se prefiere redactar
-/// de más. Un log menos útil es barato; una historia clínica en claro no.
+/// La redacción vive en [Redactor]. Acá lo que hay que poder verificar es el
+/// **cableado**: que las tres rutas de verdad lo llamen. Por eso el mensaje se
+/// arma en funciones puras ([mensajePeticion], [mensajeRespuesta],
+/// [mensajeError]) y `_log` solo lo emite. Sin esa costura, borrar un
+/// `Redactor.cuerpo(...)` mandaría diagnósticos a logcat sin poner una sola
+/// prueba en rojo: `developer.log` no es interceptable de forma portable.
 class LoggingInterceptor extends Interceptor {
   const LoggingInterceptor();
-
-  static const _redactado = '«redactado»';
-
-  /// Cabeceras que nunca se imprimen.
-  static const _cabecerasSensibles = {'authorization', 'cookie', 'set-cookie'};
-
-  /// Campos que nunca se imprimen, ni en petición ni en respuesta.
-  static const _camposSensibles = {
-    // Credenciales y sesión
-    'contrasena', 'password', 'accessToken', 'refreshToken', 'token',
-    // Identidad
-    'documentoIdentidad', 'cedula', 'correo', 'telefono',
-    // Clínicos — RNF-06
-    'diagnostico', 'tratamiento', 'observaciones', 'signosVitales',
-    'alergias', 'tipoSangre', 'medicamento', 'dosis', 'frecuencia',
-    'indicaciones', 'motivoConsulta', 'recetas', 'seguroMedico',
-  };
 
   bool get _activo => kDebugMode;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    if (_activo) {
-      _log(
-        '→ ${options.method} ${options.path}'
-        '${_query(options.queryParameters)}'
-        '\n  headers: ${_limpiarCabeceras(options.headers)}'
-        '${options.data != null ? '\n  body: ${_limpiar(options.data)}' : ''}',
-      );
-    }
+    if (_activo) _log(mensajePeticion(options));
     handler.next(options);
   }
 
@@ -53,49 +34,45 @@ class LoggingInterceptor extends Interceptor {
     Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) {
-    if (_activo) {
-      _log(
-        '← ${response.statusCode} ${response.requestOptions.path}'
-        '\n  body: ${_limpiar(response.data)}',
-      );
-    }
+    if (_activo) _log(mensajeRespuesta(response));
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    if (_activo) {
-      _log(
-        '✕ ${err.response?.statusCode ?? err.type.name} '
-        '${err.requestOptions.path}'
-        '\n  body: ${_limpiar(err.response?.data)}',
-      );
-    }
+    if (_activo) _log(mensajeError(err));
     handler.next(err);
   }
 
+  @visibleForTesting
+  static String mensajePeticion(RequestOptions options) =>
+      '→ ${options.method} ${options.path}'
+      '${_query(options.queryParameters)}'
+      '\n  headers: ${Redactor.cabeceras(options.headers)}'
+      '${options.data != null ? '\n  body: ${Redactor.cuerpo(options.data)}' : ''}';
+
+  @visibleForTesting
+  static String mensajeRespuesta(Response<dynamic> response) =>
+      '← ${response.statusCode} ${response.requestOptions.path}'
+      '\n  body: ${Redactor.cuerpo(response.data)}';
+
+  @visibleForTesting
+  static String mensajeError(DioException err) =>
+      '✕ ${err.response?.statusCode ?? err.type.name} '
+      '${err.requestOptions.path}'
+      '\n  body: ${Redactor.cuerpo(err.response?.data)}';
+
   void _log(String mensaje) => developer.log(mensaje, name: 'red');
 
-  String _query(Map<String, dynamic> q) => q.isEmpty
+  /// El query también pasa por el redactor.
+  ///
+  /// Hoy los únicos parámetros son `page`, `limit`, `fecha` y
+  /// `especialidadId`, ninguno sensible. Pero el backend todavía no tiene
+  /// búsqueda por texto (BACKEND_ISSUES.md #8), y el día que la tenga el
+  /// término natural es un nombre o una cédula. Sin esto, ese valor se
+  /// imprimiría en claro mientras el mismo dato en el cuerpo sí se taparía.
+  static String _query(Map<String, dynamic> q) => q.isEmpty
       ? ''
-      : '?${q.entries.map((e) => '${e.key}=${e.value}').join('&')}';
-
-  Map<String, dynamic> _limpiarCabeceras(Map<String, dynamic> headers) => {
-    for (final e in headers.entries)
-      e.key: _cabecerasSensibles.contains(e.key.toLowerCase())
-          ? _redactado
-          : e.value,
-  };
-
-  /// Recorre el árbol y reemplaza los campos sensibles a cualquier profundidad.
-  Object? _limpiar(Object? dato) => switch (dato) {
-    final Map<dynamic, dynamic> m => {
-      for (final e in m.entries)
-        e.key: _camposSensibles.contains(e.key.toString())
-            ? _redactado
-            : _limpiar(e.value),
-    },
-    final List<dynamic> l => l.map(_limpiar).toList(),
-    _ => dato,
-  };
+      : '?${q.entries.map((e) => '${e.key}='
+            '${Redactor.esSensible(e.key) ? Redactor.marca : e.value}').join('&')}';
 }

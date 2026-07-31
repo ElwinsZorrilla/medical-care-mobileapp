@@ -101,9 +101,26 @@ class _FiltroEspecialidades extends ConsumerWidget {
           child: LoadingSkeleton(),
         ),
       ),
-      // Si el catálogo falla, la búsqueda sin filtro sigue funcionando: se
-      // oculta el filtro en vez de tumbar la pantalla entera.
-      AsyncError<List<dynamic>>() => const SizedBox.shrink(),
+      // Si el catálogo falla, la búsqueda sin filtro sigue funcionando: no se
+      // tumba la pantalla entera. Pero tampoco puede desaparecer en silencio:
+      // el provider es `keepAlive`, así que sin una salida el filtro quedaría
+      // muerto por el resto de la sesión, y ni el "Reintentar" de la lista lo
+      // recupera porque invalida otro provider.
+      AsyncError<List<dynamic>>() => Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Space.lg,
+          vertical: Space.sm,
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: AppButton(
+            label: 'Cargar especialidades',
+            variant: AppButtonVariant.secundaria,
+            expandido: false,
+            onPressed: () => ref.invalidate(catalogoEspecialidadesProvider),
+          ),
+        ),
+      ),
       AsyncData(:final value) => SizedBox(
         height: Space.huge + Space.md,
         child: ListView.separated(
