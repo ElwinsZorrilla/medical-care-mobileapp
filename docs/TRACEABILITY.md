@@ -20,7 +20,7 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-01 | Registro con rol | F04 | `auth/registro` | | ⬜ |
 | RF-02 | Correo único y válido | F04 | `auth/registro` | | ⬜ |
 | RF-03 | Login → JWT | F04 | `auth/login` | | ⬜ |
-| RF-04 | Refresh token | F03 | `refresh_interceptor` | | ⬜ |
+| RF-04 | Refresh token | F03 | `core/network/refresh_interceptor.dart` | `refresh_interceptor_test.dart` — 5 peticiones concurrentes con 401 disparan **1** refresh | ✅ |
 | RF-05 | Logout invalida refresh | F04 | `auth/repository` | | ⚠️ no hay `/auth/logout` ni revocación; solo borrado local ([#3](BACKEND_ISSUES.md)) |
 | RF-06 | Acceso por rol | F04 | `router/guards` | | ⬜ |
 | RF-07 | Perfil paciente | F05 | `perfil/paciente` | | ⬜ |
@@ -68,8 +68,8 @@ tomarla al front en solitario.
 | RNF | Descripción corta | Fase | Evidencia | Estado |
 |---|---|---|---|---|
 | RNF-01 | Contraseñas cifradas | — | Responsabilidad del back. El front solo verifica que nunca vuelva en la respuesta. | ⬜ |
-| RNF-02 | JWT + guards de rol | F03,F04 | | ⬜ |
-| RNF-03 | Refresh cifrado en reposo | F03 | `flutter_secure_storage` | ⬜ |
+| RNF-02 | JWT + guards de rol | F03,F04 | `auth_interceptor.dart` inyecta el Bearer; guards de rol en F04 | ⚠️ |
+| RNF-03 | Refresh cifrado en reposo | F03 | `core/storage/secure_store.dart` sobre `flutter_secure_storage` (Keystore / Keychain). Nunca `SharedPreferences` | ✅ |
 | RNF-04 | Sin secretos en código | F01 | `core/config/env.dart` (`String.fromEnvironment`, valida al arrancar) + hook pre-commit · 6 pruebas | ✅ |
 | RNF-05 | Cabeceras, CORS, rate limit | F14 | `nginx.conf` | ⬜ |
 | RNF-06 | Historial restringido | F09 | | ⬜ |
@@ -82,7 +82,7 @@ tomarla al front en solitario.
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
 | RNF-14 | Pruebas por módulo | todas | Cobertura ≥ 80% | ⬜ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
-| RNF-16 | Errores claros y uniformes | F03 | Jerarquía `Failure` | ⬜ |
+| RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
 | RNF-17 | Docker | F14 | `FLUTTER_VERSION` alineado a 3.44.5 en F01; falta verificar el build | ⬜ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `AppTime` + auditoría | ⬜ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
