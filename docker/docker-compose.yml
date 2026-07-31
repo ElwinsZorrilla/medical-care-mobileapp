@@ -1,9 +1,19 @@
 # Levanta el front web contra el backend para pruebas end-to-end.
 # El backend vive en su propio repo; acá solo se consume.
 #
-#   docker compose up --build
-#   → front  http://localhost:8080
-#   → api    http://localhost:3000/docs   (Swagger, RNF-15)
+# SOCKET_URL no se pasa: `Env` no lo define. Estaba declarado como build-arg
+# sin que nada lo leyera — se agrega cuando exista el transporte de tiempo
+# real (BACKEND_ISSUES.md #5).
+#
+#   docker compose up --build            → solo el front, en localhost:8080
+#   docker compose --profile full up     → front + api + db + cache
+#
+# El front se levanta **solo** a propósito. Antes tenía
+# `depends_on: api: service_healthy`, y como el Dockerfile del backend hoy no
+# compila (docs/BACKEND_ISSUES.md #1) el front no arrancaba nunca aunque
+# estuviera perfecto. Ahora nginx sirve la SPA de inmediato y `/api` responde
+# 502 hasta que haya backend, que es información útil en vez de un contenedor
+# que no existe.
 
 name: medicare
 
@@ -14,17 +24,36 @@ services:
       dockerfile: docker/Dockerfile
       target: web
       args:
-        API_BASE_URL: http://localhost:3000
-        SOCKET_URL: ws://localhost:3000
+        # El navegador resuelve esta URL desde la máquina del usuario, no
+        # desde la red de docker: por eso `localhost:8080` —el propio front—
+        # y no `api:3000`, que sólo existe dentro de la red.
+        #
+        # Y apunta al front, no al backend, porque nginx proxea `/api` al
+        # servicio `api`. Mismo origen ⇒ sin preflight CORS, que es lo que
+        # hoy rompe el escenario en navegador (BACKEND_ISSUES.md #2).
+        #
+        # El sufijo `/api` es obligatorio: el backend usa `setGlobalPrefix`
+        # y `Env.apiBaseUrl` lo espera incluido. Antes decía
+        # `http://localhost:3000` y toda petición habría dado 404.
+        API_BASE_URL: http://localhost:8080/api
     ports: ["8080:8080"]
-    depends_on:
-      api: { condition: service_healthy }
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   api:
     # El back vive en ../../back dentro del workspace (ver README.md raíz).
+    # La ruta se resuelve relativa a ESTE archivo, o sea front/docker/, así
+    # que apunta a MedicalCare/back — comprobado.
+    #
     # OJO: su Dockerfile hoy no compila — argon2 no construye sobre alpine.
-    # Ver docs/BACKEND_ISSUES.md #1 antes de usar este servicio.
+    # Ver docs/BACKEND_ISSUES.md #1. Por eso vive tras un perfil: sin
+    # `--profile full` no se intenta construir y el front sube igual.
+    profiles: ["full"]
     build:
       context: ../../back
       dockerfile: Dockerfile
@@ -38,13 +67,22 @@ services:
       db:    { condition: service_healthy }
       cache: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      # `/api/health`, no `/health`: el backend monta todo bajo el prefijo
+      # global `/api` (verificado en docs/openapi.json). Con la ruta sin
+      # prefijo el servicio nunca llegaba a `healthy`.
+      #
+      # Y 127.0.0.1 en vez de `localhost`: dentro del contenedor `localhost`
+      # resuelve primero a ::1 y el chequeo falla con "connection refused"
+      # aunque el servidor responda. Es el mismo defecto que tenía el
+      # HEALTHCHECK del front.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 10s
       timeout: 3s
       retries: 10
       start_period: 20s
 
   db:
+    profiles: ["full"]
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: medicare
@@ -59,6 +97,7 @@ services:
       retries: 10
 
   cache:
+    profiles: ["full"]
     image: redis:7-alpine
     command: ["redis-server", "--save", "60", "1"]
     volumes: ["redisdata:/data"]

@@ -71,11 +71,11 @@ tomarla al front en solitario.
 | RNF-02 | JWT + guards de rol | F03,F04 | `auth_interceptor.dart` inyecta el Bearer · `redirect` del router bloquea el área ajena por rol | ✅ |
 | RNF-03 | Refresh cifrado en reposo | F03 | `core/storage/secure_store.dart` sobre `flutter_secure_storage` (Keystore / Keychain). Nunca `SharedPreferences` | ✅ |
 | RNF-04 | Sin secretos en código | F01 | `core/config/env.dart` (`String.fromEnvironment`, valida al arrancar) + hook pre-commit · 6 pruebas | ✅ |
-| RNF-05 | Cabeceras, CORS, rate limit | F14 | `nginx.conf` | ⬜ |
+| RNF-05 | Cabeceras, CORS, rate limit | F14 | `docker/security-headers.conf` (nosniff, DENY, Referrer-Policy, Permissions-Policy, CSP) + `limit_req` a 30 r/s con ráfaga 100, y `server_tokens off`. **CORS se elimina por topología**: nginx proxea `/api` al backend, mismo origen, sin preflight. Medido con `curl` sobre el contenedor, no leído del archivo — el job `imagen` del CI repite las comprobaciones | ✅ |
 | RNF-06 | Historial restringido | F09 | **No hay parámetro de paciente**: la ruta la elige el rol de la sesión, así que el acceso cruzado no se puede expresar. El backend además filtra por token | ✅ |
 | RNF-07 | Listados con paginación | F06 | `Pagina<T>` calcula `totalPaginas` porque el backend no manda `lastPage`; límite recortado a 50 en el repositorio | ✅ |
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
-| RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
+| RNF-09 | Healthcheck | F14 | `/healthz` responde `ok` y devuelve 503 si falta el build. `HEALTHCHECK` del contenedor verificado en `healthy` — usaba `localhost`, que resuelve a ::1, y quedaba `unhealthy` para siempre | ✅ |
 | RNF-10 | Concurrencia sin duplicar | F08 | El backend lo garantiza (bloqueo pesimista + índice único, verificado en F00 con carrera real). El front refresca la grilla y avisa; **nunca reintenta en silencio** | ✅ |
 | RNF-11 | Arquitectura modular | F01,F04,F05,F13 | Seis módulos con las tres capas; lo compartido de dominio (`Especialidad`, `TipoUsuario`, `FechaCalendario`, `PerfilMedico`) subió a `core/`. **Corregido en F13:** esta fila decía "ninguno importa del otro" y era falso — cinco features importan `dioClienteProvider` y `sesionActualProvider` desde `features/auth/presentation/` (7 archivos). `test/arquitectura_test.dart` vuelve la regla ejecutable y lleva el registro; el rediseño de dónde vive la sesión queda pendiente. Ver `HARDENING.md` §7.b | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
@@ -83,7 +83,7 @@ tomarla al front en solitario.
 | RNF-14 | Pruebas por módulo | todas,F13 | **86.0 %** de línea (2297/2672), 445 pruebas, excluyendo código generado. Ver `docs/HARDENING.md` | ✅ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
-| RNF-17 | Docker | F14 | `FLUTTER_VERSION` alineado a 3.44.5 en F01; falta verificar el build | ⬜ |
+| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **445 pruebas, cobertura 86.0 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `core/time/app_time.dart` es el único borde de conversión; desfase fijo −4 h para coincidir con el backend (ADR-005). `test/core/time/disciplina_utc_test.dart` recorre `lib/` y falla ante `DateTime.now()` o formateo fuera de `AppTime` — 24 pruebas, comprobada falsificable | ✅ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
 

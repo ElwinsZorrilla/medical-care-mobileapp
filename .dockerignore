@@ -35,11 +35,17 @@ ios/.symlinks/
 ios/Flutter/ephemeral/
 
 # ── Documentacion: no entra al artefacto ─────────────────────────────────
-docs/
+docs/*
 prompts/
 LOOP.md
 *.md
-!pubspec.yaml
+
+# Excepcion: docs/openapi.json NO es documentacion, es una entrada de prueba.
+# test/core/network/redactor_test.dart deriva de el la lista de campos que no
+# pueden aparecer en un log (RNF-06), en vez de mantener una copia a mano que
+# se desactualiza sola. Sin este archivo, ese test falla dentro del contenedor
+# con PathNotFoundException — comprobado en el primer build de F14.
+!docs/openapi.json
 
 # ── Editores y SO ────────────────────────────────────────────────────────
 .idea/
@@ -48,6 +54,13 @@ LOOP.md
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ── Config del asistente: R2 dice que no se versiona, y tampoco viaja ────
+# Aunque .gitignore ya los excluye del repo, `COPY . .` copia del disco, no
+# de git: sin esto entrarian a la imagen desde una copia de trabajo local.
+CLAUDE.md
+.claude/
+.mcp.json
 
 # ── Secretos y firma: nunca entran a una imagen ──────────────────────────
 .env

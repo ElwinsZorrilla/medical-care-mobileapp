@@ -1,0 +1,324 @@
+name: CI
+
+# La misma barra que el gate local, en un sitio donde nadie la puede saltear.
+#
+# Los hooks de .githooks/ dependen de que cada quien haya corrido
+# `git config core.hooksPath .githooks`, y un `push` directo los saltea de
+# todos modos. Lo que protege una regla es que corra aca.
+#
+# Linux ademas es la plataforma canonica de los goldens: en Windows se saltan
+# (ver test/core/widgets/status_rail_golden_test.dart), asi que este pipeline
+# es el unico sitio donde de verdad se comparan.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Un push nuevo sobre la misma rama cancela el anterior: no tiene sentido
+# gastar minutos verificando un commit que ya quedo viejo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimo indispensable. Por omision el token puede escribir en el repo.
+permissions:
+  contents: read
+
+env:
+  # Una sola fuente de verdad; tiene que coincidir con el ARG del Dockerfile
+  # y con el SDK local (docs/ARCHITECTURE.md).
+  FLUTTER_VERSION: 3.44.5
+
+jobs:
+  # ── 1. Higiene ──────────────────────────────────────────────────────────
+  # Replica lo que comprueban .githooks/pre-commit y commit-msg. Corre primero
+  # porque tarda segundos: no vale la pena gastar cinco minutos de Flutter
+  # para despues descubrir que se colo un keystore.
+  higiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Hace falta el historico para poder mirar el rango de commits.
+          fetch-depth: 0
+
+      - name: Archivos que no se versionan
+        run: |
+          set -euo pipefail
+          prohibidos=$(git ls-files | grep -iE '(^|/)(CLAUDE\.md|\.claude/|\.cursor/|\.review/|\.mcp\.json|\.env$|\.env\..*|key\.properties|google-services\.json|GoogleService-Info\.plist)|\.(jks|keystore|p12|pem)$' || true)
+          # .env.example es la plantilla sin valores: esa si va.
+          prohibidos=$(echo "$prohibidos" | grep -v '^\.env\.example$' || true)
+          if [ -n "$prohibidos" ]; then
+            echo "::error::Archivos prohibidos en el repo:"
+            echo "$prohibidos"
+            exit 1
+          fi
+
+      - name: Secretos incrustados (RNF-04)
+        run: |
+          set -euo pipefail
+          # Mismo patron que .githooks/pre-commit, pero sobre el arbol completo
+          # y no solo sobre el diff: un secreto que entro antes de que
+          # existiera el hook seguiria ahi.
+          hallado=$(grep -rnE "(apiKey|api_key|secretKey|clientSecret|password|accessToken|refreshToken)[[:space:]]*[:=][[:space:]]*['\"][^'\"]" --include='*.dart' lib test | grep -vE "fromEnvironment|dart-define|// ignore|controller\.text|\.value" || true)
+          if [ -n "$hallado" ]; then
+            echo "::error::Posible secreto en duro. Usar --dart-define / String.fromEnvironment:"
+            echo "$hallado"
+            exit 1
+          fi
+
+      - name: Sin atribucion de IA en los mensajes de commit (R1)
+        run: |
+          set -euo pipefail
+          base='${{ github.event.pull_request.base.sha || github.event.before }}'
+          rango="HEAD"
+          if [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ]; then
+            rango="$base..HEAD"
+          fi
+          # Sin tuberia a proposito. `grep -q` sale al primer acierto y cierra
+          # el pipe; si `git log` todavia esta escribiendo muere con SIGPIPE
+          # (141), `pipefail` lo propaga, y el `if` lo lee como "no encontro
+          # nada". El guard se volveria falso-verde en cuanto el historial
+          # pasara del buffer de 64 KB, justo cuando mas commits hay que
+          # vigilar.
+          if grep -qiE 'co-authored-by|generated with|claude|anthropic|ai-assisted|copilot' < <(git log --format='%B' "$rango"); then
+            echo "::error::Rastro de atribucion de IA en un mensaje de commit."
+            exit 1
+          fi
+
+      - name: Sin atribucion de IA en los archivos (R1)
+        run: |
+          set -euo pipefail
+          # El hook mira el diff; aca se mira el arbol. R1 dice "codigo,
+          # comentarios, commits **o docs**", y sin este step el CI solo
+          # cubria commits: una marca de autoria dentro de un comentario .dart
+          # atravesaba el pipeline sin que nada lo viera.
+          #
+          # .github/, .githooks/ y LOOP.md quedan fuera: los tres contienen
+          # los patrones dentro de la propia regla que los prohibe, y este
+          # mismo step se marcaba a si mismo — comprobado corriendolo en un
+          # contenedor Linux antes de darlo por bueno.
+          hallado=$(grep -rniE 'co-authored-by|generated with claude|claude\.ai/code|ai-assisted' lib test docs web scripts README.md || true)
+          if [ -n "$hallado" ]; then
+            echo "::error::Rastro de atribucion de IA en archivos:"
+            echo "$hallado"
+            exit 1
+          fi
+
+      - name: Formato de los mensajes de commit
+        run: |
+          set -euo pipefail
+          base='${{ github.event.pull_request.base.sha || github.event.before }}'
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "sin rango de comparacion; nada que revisar"
+            exit 0
+          fi
+          fallidos=0
+          # `--no-merges`: en un pull_request, checkout materializa
+          # refs/pull/N/merge y HEAD es el commit que fabrica GitHub, con
+          # asunto "Merge <sha> into <sha>". Ese commit no lo escribio nadie y
+          # nunca va a cumplir la convencion.
+          while read -r linea; do
+            [ -z "$linea" ] && continue
+            if ! echo "$linea" | grep -qE '^(feat|fix|refactor|test|docs|chore|perf|style|build|ci)(\([a-z]+\))?!?: .{10,}'; then
+              echo "::error::Mensaje fuera de convencion: $linea"
+              fallidos=1
+            fi
+          done < <(git log --no-merges --format='%s' "$base..HEAD")
+          exit $fallidos
+
+  # ── 2. La barra ─────────────────────────────────────────────────────────
+  # format + codegen + analyze + test + cobertura: exactamente scripts/verify.sh.
+  #
+  # Se corre con Flutter directo y no con `docker build --target verify`
+  # porque tarda un tercio. La equivalencia no se confia: el job `imagen`
+  # construye el stage `verify` del Dockerfile, asi que si los dos caminos
+  # divergen, uno de los dos se pone rojo.
+  barra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dependencias
+        run: flutter pub get
+
+      - name: verify.sh
+        run: ./scripts/verify.sh
+
+      - name: Publicar cobertura
+        # Se sube siempre, tambien cuando la barra falla: es justo cuando hace
+        # falta mirarla.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publicar goldens que fallaron
+        # Alchemist deja esperado/obtenido/diff en test/**/failures. Sin esto,
+        # un golden roto en CI es un "66px de diferencia" y nada que mirar.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldens-fallidos
+          path: test/**/failures/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── 3. La imagen ────────────────────────────────────────────────────────
+  # Construye el target web y comprueba las cabeceras **servidas**, no las
+  # escritas. RNF-05 estuvo trece fases dado por cumplido porque las
+  # directivas estaban en el archivo; medidas, el documento HTML salia sin
+  # ninguna. Este job es lo que impide que vuelva a pasar.
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir target web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: web
+          tags: medicare-front:ci
+          load: true
+          build-args: |
+            API_BASE_URL=http://localhost:8080/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Levantar
+        run: |
+          set -euo pipefail
+          # Red propia y no la bridge por defecto: el `resolver 127.0.0.11`
+          # del proxy /api solo existe en redes definidas por el usuario.
+          docker network create medicare-ci
+          docker run -d --name front --network medicare-ci -p 8080:8080 medicare-front:ci
+          for _ in $(seq 1 30); do
+            estado=$(docker inspect -f '{{.State.Health.Status}}' front)
+            [ "$estado" = healthy ] && break
+            sleep 2
+          done
+          docker inspect -f '{{.State.Health.Status}}' front | grep -qx healthy
+
+      - name: RNF-09 · healthcheck
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8080/healthz | grep -qx ok
+          # Un solo Content-Type: `add_header` agrega en vez de reemplazar y
+          # la respuesta salia con dos.
+          n=$(curl -sI http://localhost:8080/healthz | tr -d '\r' | grep -ci '^content-type:')
+          [ "$n" -eq 1 ] || { echo "::error::$n cabeceras Content-Type en /healthz"; exit 1; }
+
+      - name: RNF-05 · cabeceras en documento, asset y ruta SPA
+        run: |
+          set -euo pipefail
+          # `tr -d '\r'`: curl -I devuelve las cabeceras con CRLF, asi que un
+          # ancla `$` no casa nunca en Linux. En Git Bash si casa —MSYS come
+          # el CR— y por eso una comprobacion que se cumple podia fallar en
+          # toda corrida del runner.
+          for ruta in / /main.dart.js /citas /canvaskit/canvaskit.js; do
+            cab=$(curl -sI "http://localhost:8080$ruta" | tr -d '\r')
+            for h in X-Content-Type-Options X-Frame-Options Referrer-Policy Permissions-Policy Content-Security-Policy; do
+              echo "$cab" | grep -qi "^$h:" || { echo "::error::falta $h en $ruta"; exit 1; }
+            done
+          done
+          curl -sI http://localhost:8080/ | tr -d '\r' | grep -qix 'server: nginx'
+
+      - name: RNF-05 · rate limit
+        run: |
+          set -euo pipefail
+          # Desde dentro del contenedor: por la red del runner el cuello de
+          # botella es el cliente y nunca se alcanza el limite.
+          res=$(docker exec front sh -c 'ok=0; lim=0; i=0; while [ $i -lt 400 ]; do c=$(wget -q -S -O /dev/null http://127.0.0.1:8080/manifest.json 2>&1 | grep -oE "HTTP/1.1 [0-9]+" | head -1 | grep -oE "[0-9]+$"); case "$c" in 200) ok=$((ok+1));; 429) lim=$((lim+1));; esac; i=$((i+1)); done; echo "$ok $lim"')
+          limitadas=$(echo "$res" | cut -d' ' -f2)
+          [ "$limitadas" -gt 0 ] || { echo "::error::el rate limit no corta nada"; exit 1; }
+          echo "de 400 peticiones, limitadas: $limitadas"
+
+      - name: CanvasKit se sirve del mismo origen
+        run: |
+          set -euo pipefail
+          # Con la CSP `script-src 'self'`, un CanvasKit desde gstatic queda
+          # bloqueado y la app no arranca. La bandera --no-web-resources-cdn
+          # del Dockerfile es lo que lo evita; esto lo comprueba.
+          curl -fsS http://localhost:8080/flutter_bootstrap.js | grep -q '"useLocalCanvasKit":true'
+          curl -fsS -o /dev/null http://localhost:8080/canvaskit/canvaskit.js
+
+      - name: El proxy /api resuelve por DNS de docker
+        run: |
+          set -euo pipefail
+          # Un 502 solo no prueba nada: sale igual con el resolver caido que
+          # con el backend ausente. Se levanta un backend de eco con alias
+          # `api` y se comprueba que la ruta llega **con** el prefijo /api,
+          # que es lo que espera setGlobalPrefix del backend.
+          docker run -d --name eco --network medicare-ci --network-alias api \
+            python:3.12-alpine sh -c \
+            'python -c "
+          import http.server
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_GET(self):
+                  c=self.path.encode(); self.send_response(200)
+                  self.send_header(\"Content-Length\",str(len(c))); self.end_headers()
+                  self.wfile.write(c)
+          http.server.HTTPServer((\"\",3000),H).serve_forever()"'
+          sleep 3
+          ruta=$(curl -fsS http://localhost:8080/api/auth/login)
+          [ "$ruta" = /api/auth/login ] || { echo "::error::el proxy entrego '$ruta'"; exit 1; }
+
+      - name: Diagnostico si algo fallo
+        if: failure()
+        run: |
+          docker logs front || true
+          docker logs eco || true
+
+  # ── 4. Android ──────────────────────────────────────────────────────────
+  # El Dockerfile no compila el APK a proposito (necesitaria el SDK de Android
+  # entero). Se compila aca, donde el runner ya lo trae.
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [barra]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Compilar APK de release
+        # URL de relleno: aca solo se comprueba que **compila**. La real se
+        # inyecta en el pipeline de publicacion desde el secret store (R6).
+        # El APK que sale de aca no se distribuye: android/app/build.gradle.kts
+        # firma el release con la configuracion de depuracion.
+        run: |
+          set -euo pipefail
+          flutter pub get
+          # `*.g.dart` y `*.freezed.dart` estan en .gitignore, asi que el
+          # checkout no los trae y los 22 `part` de lib/ apuntan a archivos
+          # inexistentes. Sin esto el APK no compila. `needs: [barra]` no
+          # alcanza: barra los genera en SU runner y no los publica.
+          dart run build_runner build
+          flutter build apk --release --dart-define=API_BASE_URL=https://ejemplo.invalid/api

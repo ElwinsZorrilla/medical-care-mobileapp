@@ -35,7 +35,21 @@ if [ -n "$suspect" ]; then
 fi
 
 # ── 3. Rastro de autoria de IA en el codigo ──────────────────────────────
-if git diff --cached -U0 | grep -qiE '^\+.*(co-authored-by|generated with claude|claude\.ai/code|ai-assisted|🤖)'; then
+#
+# Los archivos que DEFINEN la regla quedan fuera del barrido: .githooks/,
+# .github/workflows/ y LOOP.md contienen los patrones dentro del propio
+# patron que los prohibe, asi que se marcaban a si mismos y bloqueaban
+# cualquier commit que los tocara. La regla no puede ser su propio infractor.
+#
+# Sustitucion de proceso y no tuberia: `grep -q` sale al primer acierto y
+# cierra el pipe; con `pipefail`, el SIGPIPE de git (141) se propaga y el
+# `if` lo leeria como "no encontro nada" — el guard se volveria falso-verde
+# justo cuando el diff es grande.
+if grep -qiE '^\+.*(co-authored-by|generated with claude|claude\.ai/code|ai-assisted|🤖)' \
+   < <(git diff --cached -U0 -- . \
+         ':(exclude).githooks/*' \
+         ':(exclude).github/workflows/*' \
+         ':(exclude)LOOP.md'); then
   fail "Rastro de atribucion de IA en el diff. Eliminarlo."
 fi
 

@@ -44,6 +44,35 @@ void main() {
   }
 
   group('StatusRail', () {
+    testWidgets('los cinco estados se distinguen sin ver el color', (
+      tester,
+    ) async {
+      // Los goldens cubren las 20 combinaciones, pero **solo corren en
+      // Linux** (ver status_rail_golden_test.dart). Sin esta prueba, quien
+      // desarrolla en Windows puede romper el riel —el componente que el
+      // proyecto llama "la unica red"— y no enterarse hasta el CI.
+      //
+      // Esto no reemplaza al golden: no compara pixeles. Comprueba lo que un
+      // usuario daltonico necesita, que es que estado y glifo sean unicos.
+      final glifos = <String>{};
+
+      for (final estado in CitaEstado.values) {
+        await montar(
+          tester,
+          StatusRail(estado: estado, child: const Text('x')),
+        );
+
+        expect(
+          find.text(estado.etiqueta),
+          findsOneWidget,
+          reason: '${estado.name} sin etiqueta visible',
+        );
+        expect(glifos.add(estado.glifo), isTrue, reason: 'glifo repetido');
+      }
+
+      expect(glifos, hasLength(CitaEstado.values.length));
+    });
+
     testWidgets('muestra etiqueta y glifo, no solo color', (tester) async {
       await montar(
         tester,
@@ -106,16 +135,6 @@ void main() {
         find.byType(AnimatedContainer),
       );
       expect(riel.duration, Duration.zero);
-    });
-
-    testWidgets('los cinco estados se renderizan', (tester) async {
-      for (final estado in CitaEstado.values) {
-        await montar(
-          tester,
-          StatusRail(estado: estado, child: const Text('x')),
-        );
-        expect(find.text(estado.etiqueta), findsOneWidget);
-      }
     });
   });
 
