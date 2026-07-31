@@ -41,9 +41,9 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-22 | Cancelar con motivo | F08 | Diálogo con motivo obligatorio; 403 y 409 con mensaje propio | 4 pruebas de widget + 3 de repositorio | ✅ |
 | RF-23 | Estados de cita | F02+F08 | `core/domain/cita_estado.dart`, `core/widgets/status_rail.dart` | `cita_estado_test.dart` (12) + 20 goldens | ⚠️ Los 5 estados mapeados, pintados y con golden. `CONFIRMADA` y `NO_ASISTIO` son inalcanzables: no hay endpoint de transición ([#4](BACKEND_ISSUES.md)) |
 | RF-24 | Mis citas / mi agenda | F08 | Una pantalla, dos rutas según rol; scroll infinito y caché de médicos | pruebas de los 4 estados y de ambos roles | ✅ |
-| RF-25 | Registrar consulta | F09 | `historial/consulta` | | ⬜ |
-| RF-26 | Emitir recetas | F09 | `historial/receta` | | ⬜ |
-| RF-27 | Ver historial | F09 | `historial/paciente` | | ⬜ |
+| RF-25 | Registrar consulta | F09 | `HistorialRepository.registrar`; `SignosVitales` impone forma al `jsonb` libre | `historial_test.dart` (21) | ✅ |
+| RF-26 | Emitir recetas | F09 | Van en la misma llamada que la consulta, no aparte | prueba de que viajan juntas | ✅ |
+| RF-27 | Ver historial | F09 | `historial_screen.dart`, ruta elegida por rol | `historial_screen_test.dart` (11) | ✅ |
 | RF-28 | Notificar eventos | F10 | `notificaciones` | | ⛔ |
 | RF-29 | Recordatorios 24h/1h | F10 | `notificaciones/push` | | ⛔ |
 | RF-30 | Marcar leída | F10 | `notificaciones/bandeja` | | ⛔ |
@@ -72,7 +72,7 @@ tomarla al front en solitario.
 | RNF-03 | Refresh cifrado en reposo | F03 | `core/storage/secure_store.dart` sobre `flutter_secure_storage` (Keystore / Keychain). Nunca `SharedPreferences` | ✅ |
 | RNF-04 | Sin secretos en código | F01 | `core/config/env.dart` (`String.fromEnvironment`, valida al arrancar) + hook pre-commit · 6 pruebas | ✅ |
 | RNF-05 | Cabeceras, CORS, rate limit | F14 | `nginx.conf` | ⬜ |
-| RNF-06 | Historial restringido | F09 | | ⬜ |
+| RNF-06 | Historial restringido | F09 | **No hay parámetro de paciente**: la ruta la elige el rol de la sesión, así que el acceso cruzado no se puede expresar. El backend además filtra por token | ✅ |
 | RNF-07 | Listados con paginación | F06 | `Pagina<T>` calcula `totalPaginas` porque el backend no manda `lastPage`; límite recortado a 50 en el repositorio | ✅ |
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |

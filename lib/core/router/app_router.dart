@@ -10,6 +10,7 @@ import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/busqueda/presentation/screens/busqueda_screen.dart';
 import '../../features/citas/presentation/screens/mis_citas_screen.dart';
+import '../../features/historial/presentation/screens/historial_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
@@ -97,6 +98,11 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const BusquedaScreen(),
       ),
       GoRoute(
+        path: Rutas.historial,
+        name: 'historial',
+        builder: (context, state) => const HistorialScreen(),
+      ),
+      GoRoute(
         path: Rutas.perfil,
         name: 'perfil',
         builder: (context, state) => const PerfilScreen(),
@@ -134,6 +140,10 @@ abstract final class Rutas {
 
   /// Franjas del medico. Area exclusiva del rol MEDICO.
   static const String disponibilidad = '/agenda/disponibilidad';
+
+  /// Historial clinico. La ruta del backend la elige el rol de la sesion,
+  /// asi que no hay parametro de paciente que alguien pueda manipular.
+  static const String historial = '/historial';
 
   /// Accesibles sin sesión.
   static const Set<String> publicas = {login, registro};
