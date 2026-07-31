@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medicare/core/domain/fecha_calendario.dart';
 import 'package:medicare/core/domain/modalidad.dart';
+import 'package:medicare/core/domain/turno.dart';
 import 'package:medicare/core/time/app_time.dart';
 import 'package:medicare/features/agenda/domain/disponibilidad.dart';
 import 'package:medicare/features/citas/domain/cita.dart';

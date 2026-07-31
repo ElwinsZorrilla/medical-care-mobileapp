@@ -49,24 +49,6 @@ class AgendaApi {
     return DisponibilidadDto.fromJson(res.data!);
   }
 
-  /// `GET /availability/doctors/{idMedico}/slots?fecha=` — RF-18.
-  ///
-  /// Ruta **pública**. `fecha` es `YYYY-MM-DD` en el calendario de Santo
-  /// Domingo, no en UTC: quien llama debe pasarla ya resuelta con
-  /// `AppTime.fechaApi`.
-  Future<List<TurnoDto>> turnos({
-    required int idMedico,
-    required String fecha,
-  }) async {
-    final res = await _dio.get<List<dynamic>>(
-      '/availability/doctors/$idMedico/slots',
-      queryParameters: {'fecha': fecha},
-    );
-    return (res.data ?? const [])
-        .map((e) => TurnoDto.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
   /// Quita las claves nulas: en un PATCH, `null` significaría "borralo".
   static Map<String, dynamic> _sinNulos(Map<String, dynamic> json) => {
     for (final e in json.entries)

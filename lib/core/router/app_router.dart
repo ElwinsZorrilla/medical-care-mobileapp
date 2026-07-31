@@ -10,7 +10,9 @@ import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/busqueda/presentation/screens/busqueda_screen.dart';
 import '../../features/citas/presentation/screens/mis_citas_screen.dart';
+import '../../features/citas/presentation/screens/reserva_screen.dart';
 import '../../features/historial/presentation/screens/historial_screen.dart';
+import '../../features/historial/presentation/screens/registro_consulta_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
@@ -98,6 +100,22 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const BusquedaScreen(),
       ),
       GoRoute(
+        // El id del médico va en la ruta y no en un provider global: así la
+        // pantalla es enlazable y sobrevive a un reinicio del router.
+        path: Rutas.reserva,
+        name: 'reserva',
+        builder: (context, state) => ReservaScreen(
+          idMedico: int.parse(state.pathParameters['idMedico']!),
+        ),
+      ),
+      GoRoute(
+        path: Rutas.registroConsulta,
+        name: 'registroConsulta',
+        builder: (context, state) => RegistroConsultaScreen(
+          idCita: int.parse(state.pathParameters['idCita']!),
+        ),
+      ),
+      GoRoute(
         path: Rutas.historial,
         name: 'historial',
         builder: (context, state) => const HistorialScreen(),
@@ -138,8 +156,22 @@ abstract final class Rutas {
   /// Buscar medico. La abre el paciente desde su listado de citas.
   static const String busqueda = '/buscar';
 
+  /// Reservar con un medico concreto — RF-19. Se llega tocando su tarjeta en
+  /// la busqueda.
+  static const String reserva = '/reservar/:idMedico';
+
+  /// La ruta concreta, para no construir el string a mano en cada llamador.
+  static String reservaCon(int idMedico) => '/reservar/$idMedico';
+
   /// Franjas del medico. Area exclusiva del rol MEDICO.
   static const String disponibilidad = '/agenda/disponibilidad';
+
+  /// Registrar la consulta de una cita — RF-25, RF-26. Cuelga de `/agenda`
+  /// para que el guard por rol la cubra sin una regla aparte: solo el medico
+  /// registra consultas.
+  static const String registroConsulta = '/agenda/consulta/:idCita';
+
+  static String registroConsultaDe(int idCita) => '/agenda/consulta/$idCita';
 
   /// Historial clinico. La ruta del backend la elige el rol de la sesion,
   /// asi que no hay parametro de paciente que alguien pueda manipular.

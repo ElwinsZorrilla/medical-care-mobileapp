@@ -147,32 +147,3 @@ class Disponibilidad {
       horaInicio < otra.horaFin &&
       otra.horaInicio < horaFin;
 }
-
-/// Turno libre — RF-18.
-///
-/// A diferencia de la franja, esto **sí** es un instante absoluto: el backend
-/// lo devuelve en ISO-8601 UTC (`2026-08-17T12:00:00.000Z`). Se pinta con
-/// `AppTime.hora` y se manda de vuelta **tal cual vino**, sin reconstruirlo.
-class Turno {
-  const Turno({
-    required this.idDisponibilidad,
-    required this.inicioUtc,
-    required this.finUtc,
-    required this.modalidad,
-    required this.inicioApi,
-  });
-
-  final int idDisponibilidad;
-  final DateTime inicioUtc;
-  final DateTime finUtc;
-  final ModalidadFranja modalidad;
-
-  /// El string exacto que devolvió el servidor.
-  ///
-  /// Se conserva a propósito: al reservar hay que mandar **este** valor, no
-  /// uno reconstruido desde `inicioUtc`. Un `toIso8601String()` puede diferir
-  /// en los milisegundos o en el sufijo y el backend no encontraría el turno.
-  final String inicioApi;
-
-  Duration get duracion => finUtc.difference(inicioUtc);
-}

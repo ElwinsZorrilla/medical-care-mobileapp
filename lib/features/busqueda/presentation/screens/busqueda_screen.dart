@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/domain/medico.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/widgets.dart';
@@ -262,7 +264,9 @@ class _TarjetaMedico extends StatelessWidget {
     final text = context.text;
 
     return AppCard(
-      onTap: () {},
+      // RF-19: tocar al medico lleva a reservar con el. Estuvo vacio hasta
+      // F15, asi que la busqueda no llevaba a ninguna parte.
+      onTap: () => context.push(Rutas.reservaCon(medico.idMedico)),
       child: Row(
         children: [
           Avatar(nombre: medico.nombreCompleto),

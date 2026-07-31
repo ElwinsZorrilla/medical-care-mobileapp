@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/domain/tipo_usuario.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/widgets.dart';
@@ -34,6 +36,13 @@ class PerfilScreen extends ConsumerWidget {
     return AppScaffold(
       titulo: 'Mi perfil',
       acciones: [
+        // RF-27: la puerta al historial clinico. Sin esto la pantalla existia
+        // con sus 11 pruebas de widget y nadie podia abrirla.
+        IconButton(
+          onPressed: () => context.push(Rutas.historial),
+          icon: const Icon(Icons.folder_outlined),
+          tooltip: 'Mi historial',
+        ),
         IconButton(
           onPressed: () =>
               ref.read(sesionActualProvider.notifier).cerrarSesion(),

@@ -167,4 +167,79 @@ void main() {
       );
     });
   });
+
+  /// Rutas alcanzables — la leccion de F15, vuelta prueba.
+  ///
+  /// Auditar la matriz destapo seis requerimientos marcados como cubiertos que
+  /// no tenian interfaz. Al arreglarlos aparecieron **tres mas**: dos rutas
+  /// registradas a las que ninguna linea de `lib/` navegaba (RF-16/17 y RF-27),
+  /// y media capa de repositorio que solo llamaban las pruebas.
+  ///
+  /// El patron se repitio siete revisiones seguidas porque nadie recorria el
+  /// conjunto. Esto lo hace por nosotros: una pantalla sin puerta de entrada es
+  /// codigo muerto con prueba de widget, que es la forma mas cara de codigo
+  /// muerto — parece cubierto.
+  group('rubro 3.6 — toda ruta tiene por donde llegarse', () {
+    /// Rutas que no necesitan un `go`/`push` explicito.
+    const alcanzablesSinEnlace = {
+      // La primera pantalla.
+      'splash',
+      // Destinos de `Rutas.deInicioPara` tras autenticarse.
+      'misCitas', 'agenda',
+      // El `redirect` manda aca cuando no hay sesion.
+      'login',
+      // Se llega desde login.
+      'registro',
+    };
+
+    test('ninguna ruta queda sin origen de navegacion', () {
+      final router = File('lib/core/router/app_router.dart').readAsStringSync();
+
+      // Nombres declarados en `abstract final class Rutas`.
+      final declaradas = RegExp(r'static (?:const String|String) (\w+)\s*[=(]')
+          .allMatches(router)
+          .map((m) => m.group(1)!)
+          // `publicas` es un conjunto y `deInicioPara` una funcion de
+          // ayuda: ninguno de los dos es una ruta que alcanzar.
+          .where((n) => n != 'publicas' && n != 'deInicioPara')
+          .toSet();
+      expect(declaradas, isNotEmpty, reason: 'no se leyo la clase Rutas');
+
+      // Cada uso de `Rutas.x` fuera del propio router es una puerta.
+      final conPuerta = <String>{};
+      for (final f in fuentes()) {
+        if (f.ruta.endsWith('core/router/app_router.dart')) continue;
+        for (final linea in f.lineas) {
+          for (final m in RegExp(r'Rutas\.(\w+)').allMatches(linea)) {
+            conPuerta.add(m.group(1)!);
+          }
+        }
+      }
+
+      // `reservaCon` es la puerta de `reserva`; `registroConsultaDe` la de
+      // `registroConsulta`. Se normalizan los pares constructor/constante.
+      const alias = {
+        'reservaCon': 'reserva',
+        'registroConsultaDe': 'registroConsulta',
+      };
+      conPuerta.addAll(
+        conPuerta.map((n) => alias[n]).whereType<String>().toList(),
+      );
+
+      final huerfanas = declaradas
+          .where((n) => !alias.containsKey(n))
+          .where((n) => !alcanzablesSinEnlace.contains(n))
+          .where((n) => !conPuerta.contains(n))
+          .toList();
+
+      expect(
+        huerfanas,
+        isEmpty,
+        reason:
+            'Rutas registradas a las que nadie navega: $huerfanas. '
+            'Una pantalla sin puerta de entrada esta muerta por mas pruebas '
+            'de widget que tenga.',
+      );
+    });
+  });
 }

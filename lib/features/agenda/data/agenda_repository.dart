@@ -4,7 +4,6 @@ import '../../../core/domain/modalidad.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/error/failure_mapper.dart';
 import '../../../core/network/result.dart';
-import '../../../core/time/app_time.dart';
 import '../domain/disponibilidad.dart';
 import 'agenda_api.dart';
 import 'agenda_dto.dart';
@@ -75,22 +74,6 @@ class AgendaRepository {
     mensaje403: 'Solo puedes desactivar tus propias franjas.',
   );
 
-  /// RF-18 — turnos libres de un médico en una fecha.
-  ///
-  /// Recibe un instante y **resuelve la fecha en calendario dominicano**. Es
-  /// el punto donde el bug de zona horaria haría más daño: a las 21:00 del
-  /// lunes en RD ya es martes en UTC, así que mandar la fecha UTC mostraría
-  /// los turnos del día equivocado.
-  Future<Result<List<Turno>>> turnos({
-    required int idMedico,
-    required DateTime diaUtc,
-  }) => _envolver(
-    () async => (await _api.turnos(
-      idMedico: idMedico,
-      fecha: AppTime.fechaApi(diaUtc),
-    )).map(_aTurno).toList(),
-  );
-
   // ── Traducción ──────────────────────────────────────────────────────────
 
   Disponibilidad _aFranja(DisponibilidadDto dto) => Disponibilidad(
@@ -105,15 +88,8 @@ class AgendaRepository {
     idCentro: dto.idCentro,
   );
 
-  Turno _aTurno(TurnoDto dto) => Turno(
-    idDisponibilidad: dto.idDisponibilidad,
-    // Acá sí son instantes UTC, a diferencia del `horaInicio` de la franja.
-    inicioUtc: DateTime.parse(dto.horaInicio).toUtc(),
-    finUtc: DateTime.parse(dto.horaFin).toUtc(),
-    modalidad: ModalidadFranja.fromApi(dto.modalidad),
-    // Se guarda el string crudo: al reservar hay que mandar este mismo.
-    inicioApi: dto.horaInicio,
-  );
+  // Los turnos (RF-18) se mudaron a core/data/turnos_repository.dart: los
+  // consumen `agenda` y `citas`, y un feature no importa de otro.
 
   Future<Result<T>> _envolver<T>(
     Future<T> Function() peticion, {

@@ -66,6 +66,14 @@ class _MisCitasScreenState extends ConsumerState<MisCitasScreen> {
     return AppScaffold(
       titulo: widget.agenda ? 'Mi agenda' : 'Mis citas',
       acciones: [
+        // RF-16, RF-17: la puerta a las franjas del medico. Estaba registrada
+        // como ruta y ninguna linea de lib/ navegaba a ella.
+        if (widget.agenda)
+          IconButton(
+            onPressed: () => context.push(Rutas.disponibilidad),
+            icon: const Icon(Icons.schedule),
+            tooltip: 'Mi disponibilidad',
+          ),
         IconButton(
           onPressed: () => context.go(Rutas.perfil),
           icon: const Icon(Icons.person_outline),
@@ -326,6 +334,18 @@ class _TarjetaCita extends ConsumerWidget {
               cita.motivoConsulta!.isNotEmpty) ...[
             SizedBox(height: context.density.paddingTarjeta),
             DataField(label: 'Motivo', value: cita.motivoConsulta!),
+          ],
+
+          // RF-25 — solo en la agenda del médico y sobre una cita que todavía
+          // no se registró. Es la única forma de llevarla a COMPLETADA: el
+          // backend no expone una transición (BACKEND_ISSUES.md #4).
+          if (agenda && cita.esCancelable) ...[
+            SizedBox(height: context.density.paddingTarjeta),
+            AppButton(
+              label: 'Registrar consulta',
+              expandido: false,
+              onPressed: () => context.push(Rutas.registroConsultaDe(cita.id)),
+            ),
           ],
 
           if (cita.esCancelable) ...[

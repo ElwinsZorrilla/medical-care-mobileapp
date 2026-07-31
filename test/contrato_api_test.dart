@@ -228,20 +228,11 @@ void main() {
       expect(espia.uri.path, '/api/availability/me');
     });
 
-    test('los turnos van por fecha de calendario — RF-18, RNF-18', () async {
-      final espia = _Espia([
-        const TurnoDto(
-          idDisponibilidad: 2,
-          horaInicio: '08:00',
-          horaFin: '08:30',
-          modalidad: 'PRESENCIAL',
-        ).toJson(),
-      ]);
-      await AgendaApi(_dio(espia)).turnos(idMedico: 7, fecha: '2026-03-10');
-
-      expect(espia.uri.path, '/api/availability/doctors/7/slots');
-      expect(espia.uri.queryParameters['fecha'], '2026-03-10');
-    });
+    // Los turnos (RF-18) se mudaron a core/data/turnos_repository.dart: los
+    // consumen `agenda` y `citas`, y un feature no importa de otro. Su
+    // contrato —ruta, prefijo y `?fecha=` en calendario dominicano— se fija
+    // en test/core/data/turnos_repository_test.dart, sobre el mismo tipo de
+    // adaptador falso que se usa acá.
 
     test('desactivar es PATCH sobre su propia ruta — RF-17', () async {
       final espia = _Espia(franja.toJson());

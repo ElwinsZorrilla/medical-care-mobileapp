@@ -59,18 +59,3 @@ abstract class ActualizarDisponibilidadDto with _$ActualizarDisponibilidadDto {
 
 /// `GET /api/availability/doctors/{idMedico}/slots?fecha=` — RF-18.
 ///
-/// **`horaInicio` y `horaFin` acá son instantes ISO-8601 UTC**, no strings
-/// `HH:mm` como en la franja. Mismo nombre de campo, significado distinto
-/// según el endpoint: es la trampa más fácil de esta API.
-@freezed
-abstract class TurnoDto with _$TurnoDto {
-  const factory TurnoDto({
-    required int idDisponibilidad,
-    required String horaInicio,
-    required String horaFin,
-    required String modalidad,
-  }) = _TurnoDto;
-
-  factory TurnoDto.fromJson(Map<String, dynamic> json) =>
-      _$TurnoDtoFromJson(json);
-}

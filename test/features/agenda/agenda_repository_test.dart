@@ -62,24 +62,6 @@ class _ApiFalsa extends AgendaApi {
     if (error != null) throw error!;
     return _franja;
   }
-
-  @override
-  Future<List<TurnoDto>> turnos({
-    required int idMedico,
-    required String fecha,
-  }) async {
-    medicoPedido = idMedico;
-    fechaPedida = fecha;
-    if (error != null) throw error!;
-    return const [
-      TurnoDto(
-        idDisponibilidad: 1,
-        horaInicio: '2026-08-17T12:00:00.000Z',
-        horaFin: '2026-08-17T12:30:00.000Z',
-        modalidad: 'PRESENCIAL',
-      ),
-    ];
-  }
 }
 
 void main() {
@@ -176,65 +158,8 @@ void main() {
     });
   });
 
-  group('turnos — RF-18, el punto crítico de RNF-18', () {
-    test('manda la fecha en calendario dominicano, no UTC', () async {
-      final api = _ApiFalsa();
-      // 01:00Z del 18 es todavía lunes 17 a las 21:00 en Santo Domingo.
-      await AgendaRepository(
-        api,
-      ).turnos(idMedico: 5, diaUtc: DateTime.utc(2026, 8, 18, 1));
-
-      expect(
-        api.fechaPedida,
-        '2026-08-17',
-        reason: 'mandar 2026-08-18 mostraría los turnos del día equivocado',
-      );
-    });
-
-    test('dentro del día local coincide', () async {
-      final api = _ApiFalsa();
-      await AgendaRepository(
-        api,
-      ).turnos(idMedico: 5, diaUtc: DateTime.utc(2026, 8, 17, 15));
-      expect(api.fechaPedida, '2026-08-17');
-    });
-
-    test('el turno es un instante UTC y se pinta como hora local', () async {
-      final r = await AgendaRepository(
-        _ApiFalsa(),
-      ).turnos(idMedico: 5, diaUtc: DateTime.utc(2026, 8, 17, 12));
-
-      final t = r.valorONull!.single;
-      expect(t.inicioUtc.isUtc, isTrue);
-      // 12:00Z es 08:00 en Santo Domingo.
-      expect(AppTime.hora(t.inicioUtc), '08:00');
-      expect(t.duracion, const Duration(minutes: 30));
-    });
-
-    test('conserva el string crudo para reservar', () async {
-      // Al reservar hay que mandar exactamente este valor. Reconstruirlo con
-      // toIso8601String() puede diferir en milisegundos y el backend no
-      // encontraría el turno.
-      final r = await AgendaRepository(
-        _ApiFalsa(),
-      ).turnos(idMedico: 5, diaUtc: DateTime.utc(2026, 8, 17, 12));
-
-      expect(r.valorONull!.single.inicioApi, '2026-08-17T12:00:00.000Z');
-    });
-
-    test('camino de error: sin conexión', () async {
-      final r = await AgendaRepository(
-        _ApiFalsa(
-          error: DioException(
-            requestOptions: RequestOptions(path: '/availability'),
-            type: DioExceptionType.connectionError,
-          ),
-        ),
-      ).turnos(idMedico: 5, diaUtc: DateTime.utc(2026, 8, 17));
-
-      expect(r.failureONull, isA<SinConexion>());
-    });
-  });
+  // Los turnos (RF-18) se mudaron con su codigo a core/:
+  // test/core/data/turnos_repository_test.dart
 
   group('DiaSemana', () {
     test('0 es domingo, como getUTCDay()', () {

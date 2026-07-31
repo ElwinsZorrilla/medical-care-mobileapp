@@ -2,7 +2,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/modalidad.dart';
 import '../../../../core/network/result.dart';
-import '../../../../core/time/app_time.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/agenda_api.dart';
 import '../../data/agenda_repository.dart';
@@ -67,28 +66,3 @@ class MisFranjas extends _$MisFranjas {
 }
 
 /// Día seleccionado en la grilla de turnos.
-///
-/// Se guarda como instante UTC y se convierte a fecha dominicana solo al
-/// pedir (RNF-18).
-@riverpod
-class DiaSeleccionado extends _$DiaSeleccionado {
-  @override
-  DateTime build() => AppTime.ahoraUtc();
-
-  void seleccionar(DateTime diaUtc) => state = diaUtc;
-
-  void avanzar(int dias) => state = state.add(Duration(days: dias));
-}
-
-/// Turnos libres de un médico en el día seleccionado — RF-18.
-@riverpod
-Future<List<Turno>> turnosDisponibles(Ref ref, int idMedico) async {
-  final dia = ref.watch(diaSeleccionadoProvider);
-  final r = await ref
-      .watch(agendaRepositoryProvider)
-      .turnos(idMedico: idMedico, diaUtc: dia);
-  return switch (r) {
-    Ok(:final valor) => valor,
-    Fallo(:final failure) => throw failure,
-  };
-}
