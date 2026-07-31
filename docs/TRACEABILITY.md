@@ -32,9 +32,9 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-13 | Médico ↔ especialidad | F06 | Especialidades anidadas en cada médico del listado | prueba de `especialidadesTexto` | ✅ |
 | RF-14 | Filtrar por especialidad | F06 | `FiltroEspecialidad` + `?especialidadId=` | prueba de que el filtro viaja | ⚠️ el filtro por especialidad funciona; **búsqueda por texto no existe en el backend** ([#8](BACKEND_ISSUES.md)) |
 | RF-15 | Listados paginados | F06 | `core/domain/pagina.dart` + scroll infinito con precarga | `pagina_test.dart` (16) — incluye el caso de última página exactamente llena | ✅ |
-| RF-16 | Definir franjas | F07 | `agenda/disponibilidad` | | ⬜ |
-| RF-17 | Activar/desactivar franja | F07 | `agenda/disponibilidad` | | ⬜ |
-| RF-18 | Turnos libres por fecha | F07 | `agenda/turnos` | | ⬜ |
+| RF-16 | Definir franjas | F07 | `features/agenda/.../disponibilidad_screen.dart` | `agenda_repository_test.dart` (26), `disponibilidad_screen_test.dart` (13) | ✅ |
+| RF-17 | Activar/desactivar franja | F07 | Desactivar con confirmación; el backend no ofrece reactivar | prueba de confirmar y de cancelar | ⚠️ solo desactivar: `PATCH /desactivar` es de una sola dirección |
+| RF-18 | Turnos libres por fecha | F07 | `AgendaRepository.turnos` resuelve `?fecha=` en calendario dominicano | prueba de que 01:00Z del 18 pide el 17 | ✅ |
 | RF-19 | Reservar cita | F08 | `citas/reservar` | | ⬜ |
 | RF-20 | **Control de concurrencia** | F08 | `citas/repository` | | ⬜ |
 | RF-21 | Motivo de consulta | F08 | `citas/reservar` | | ⬜ |

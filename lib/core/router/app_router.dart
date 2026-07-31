@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/agenda/presentation/screens/disponibilidad_screen.dart';
 import '../../features/auth/domain/usuario.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -85,6 +86,11 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const _EnConstruccion('Mi agenda'),
       ),
       GoRoute(
+        path: Rutas.disponibilidad,
+        name: 'disponibilidad',
+        builder: (context, state) => const DisponibilidadScreen(),
+      ),
+      GoRoute(
         path: Rutas.busqueda,
         name: 'busqueda',
         builder: (context, state) => const BusquedaScreen(),
@@ -124,6 +130,9 @@ abstract final class Rutas {
 
   /// Buscar medico. La abre el paciente desde su listado de citas.
   static const String busqueda = '/buscar';
+
+  /// Franjas del medico. Area exclusiva del rol MEDICO.
+  static const String disponibilidad = '/agenda/disponibilidad';
 
   /// Accesibles sin sesión.
   static const Set<String> publicas = {login, registro};
