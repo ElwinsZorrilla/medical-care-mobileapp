@@ -55,10 +55,16 @@ dev_dependencies:
   mocktail: ^1.0.5
 
   # Goldens del StatusRail (F02). Reemplaza a golden_toolkit, descontinuado.
-  alchemist: ^0.12.1
+  alchemist: ^0.14.0
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # Las tipografias viajan dentro del APK. google_fonts las busca aca por
+    # nombre antes de pensar en la red; con allowRuntimeFetching en false
+    # nunca sale a internet. Ver google_fonts/NOTICE.md.
+    - google_fonts/
 
 # ── Dependencias deliberadamente ausentes ─────────────────────────────────
 #

@@ -39,7 +39,7 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-20 | **Control de concurrencia** | F08 | `citas/repository` | | ⬜ |
 | RF-21 | Motivo de consulta | F08 | `citas/reservar` | | ⬜ |
 | RF-22 | Cancelar con motivo | F08 | `citas/cancelar` | | ⬜ |
-| RF-23 | Estados de cita | F02+F08 | `CitaEstado`, `StatusRail` | | ⚠️ `CONFIRMADA` y `NO_ASISTIO` inalcanzables: no hay endpoint de transición ([#4](BACKEND_ISSUES.md)) |
+| RF-23 | Estados de cita | F02+F08 | `core/domain/cita_estado.dart`, `core/widgets/status_rail.dart` | `cita_estado_test.dart` (12) + 20 goldens | ⚠️ Los 5 estados mapeados, pintados y con golden. `CONFIRMADA` y `NO_ASISTIO` son inalcanzables: no hay endpoint de transición ([#4](BACKEND_ISSUES.md)) |
 | RF-24 | Mis citas / mi agenda | F08 | `citas/lista` | | ⬜ |
 | RF-25 | Registrar consulta | F09 | `historial/consulta` | | ⬜ |
 | RF-26 | Emitir recetas | F09 | `historial/receta` | | ⬜ |
