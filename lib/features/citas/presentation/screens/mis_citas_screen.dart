@@ -344,7 +344,19 @@ class _TarjetaCita extends ConsumerWidget {
             AppButton(
               label: 'Registrar consulta',
               expandido: false,
-              onPressed: () => context.push(Rutas.registroConsultaDe(cita.id)),
+              // Se espera el regreso y se refresca. Registrar la consulta
+              // mueve la cita a COMPLETADA del lado servidor, pero el listado
+              // no se entera: sin esto el medico vuelve, la cita sigue
+              // apareciendo pendiente y el boton sigue ahi — puede registrar
+              // una segunda consulta sobre la misma cita.
+              //
+              // Se refresca desde aca y no invalidando desde `historial`
+              // porque eso obligaria a `historial` a importar de `citas`, y un
+              // feature no importa de otro (rubro 3.3).
+              onPressed: () async {
+                await context.push(Rutas.registroConsultaDe(cita.id));
+                ref.invalidate(listadoCitasProvider);
+              },
             ),
           ],
 

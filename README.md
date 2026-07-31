@@ -80,8 +80,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 84.6 % (excluyendo código generado) |
-| Pruebas | 481 (477 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 84.9 % (excluyendo código generado) |
+| Pruebas | 486 (482 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
-import 'offline_banner.dart';
 
 /// Andamio de pantalla.
 ///
@@ -16,8 +15,6 @@ class AppScaffold extends StatelessWidget {
     required this.titulo,
     required this.body,
     this.acciones,
-    this.sinConexion = false,
-    this.onReintentarConexion,
     this.floatingActionButton,
     this.bottomNavigationBar,
     this.leading,
@@ -29,9 +26,18 @@ class AppScaffold extends StatelessWidget {
   final Widget body;
   final List<Widget>? acciones;
 
-  /// Lo inyecta el observador global de conectividad (F13).
-  final bool sinConexion;
-  final VoidCallback? onReintentarConexion;
+  // `sinConexion` y `onReintentarConexion` se eliminaron en F15.
+  //
+  // Su doc decia "lo inyecta el observador global de conectividad (F13)" y ese
+  // observador nunca se escribio: ninguna de las diez pantallas pasaba los
+  // parametros, asi que `OfflineBanner` solo aparecia en la galeria de
+  // desarrollo. Un parametro que nadie usa con un comentario que afirma que si
+  // es peor que no tenerlo: hace creer que el cuarto estado esta cubierto.
+  //
+  // Hoy `SinConexion` llega a `ErrorState` con su mensaje y su boton, que es
+  // accionable y correcto. Un banner global ademas necesitaria un paquete de
+  // conectividad, que reporta la interfaz de red y no si el servidor responde:
+  // diria "con conexion" en el wifi de un cafe que no deja salir.
 
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
@@ -62,12 +68,7 @@ class AppScaffold extends StatelessWidget {
       ),
       body: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            if (sinConexion) OfflineBanner(onReintentar: onReintentarConexion),
-            Expanded(child: body),
-          ],
-        ),
+        child: Column(children: [Expanded(child: body)]),
       ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,

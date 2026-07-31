@@ -465,29 +465,40 @@ void main() {
   });
 
   group('AppScaffold', () {
-    testWidgets('sin conexión inserta el banner', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light(),
-          home: const AppScaffold(
-            titulo: 'Citas',
-            sinConexion: true,
-            body: Text('cuerpo'),
-          ),
-        ),
-      );
-      expect(find.byType(OfflineBanner), findsOneWidget);
-    });
-
-    testWidgets('con conexión no lo inserta', (tester) async {
+    // Las dos pruebas que habia aca ejercian `sinConexion`, un parametro que
+    // ninguna pantalla pasaba nunca: pasaban en verde sin decir nada sobre la
+    // app. Se eliminaron con el parametro en F15.
+    testWidgets('pinta el titulo y el cuerpo', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light(),
           home: const AppScaffold(titulo: 'Citas', body: Text('cuerpo')),
         ),
       );
-      expect(find.byType(OfflineBanner), findsNothing);
+      expect(find.text('Citas'), findsOneWidget);
       expect(find.text('cuerpo'), findsOneWidget);
+    });
+
+    testWidgets('las acciones llegan a la barra', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: AppScaffold(
+            titulo: 'Citas',
+            acciones: [
+              IconButton(onPressed: () {}, icon: const Icon(Icons.edit)),
+            ],
+            body: const Text('cuerpo'),
+          ),
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.edit),
+        ),
+        findsOneWidget,
+      );
     });
   });
 
