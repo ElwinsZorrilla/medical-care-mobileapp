@@ -1,5 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+// Compartidos con `busqueda` y `citas`, asi que viven en core: un feature no
+// importa de otro (REVIEW_GATE 3.3).
+export '../../../core/data/medico_dto.dart' show EspecialidadDto, MedicoDto;
+
 part 'perfil_dto.freezed.dart';
 part 'perfil_dto.g.dart';
 
@@ -65,40 +69,6 @@ abstract class ActualizarPacienteDto with _$ActualizarPacienteDto {
 
   factory ActualizarPacienteDto.fromJson(Map<String, dynamic> json) =>
       _$ActualizarPacienteDtoFromJson(json);
-}
-
-/// Especialidad, tal como viene anidada en el médico.
-@freezed
-abstract class EspecialidadDto with _$EspecialidadDto {
-  const factory EspecialidadDto({
-    required int idEspecialidad,
-    required String nombre,
-    String? descripcion,
-    String? urlIcono,
-  }) = _EspecialidadDto;
-
-  factory EspecialidadDto.fromJson(Map<String, dynamic> json) =>
-      _$EspecialidadDtoFromJson(json);
-}
-
-/// `GET /api/doctors/me` y `GET /api/doctors/{id}`
-@freezed
-abstract class MedicoDto with _$MedicoDto {
-  const factory MedicoDto({
-    required int idMedico,
-    required int idUsuario,
-    required String nombres,
-    required String apellidos,
-    required String numExequatur,
-    required String estadoVerificacion,
-    @Default(<EspecialidadDto>[]) List<EspecialidadDto> especialidades,
-    String? biografia,
-    int? aniosExperiencia,
-    num? tarifaConsulta,
-  }) = _MedicoDto;
-
-  factory MedicoDto.fromJson(Map<String, dynamic> json) =>
-      _$MedicoDtoFromJson(json);
 }
 
 /// `POST /api/doctors`

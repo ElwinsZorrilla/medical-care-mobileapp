@@ -7,6 +7,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/busqueda/presentation/screens/busqueda_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
@@ -84,6 +85,11 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const _EnConstruccion('Mi agenda'),
       ),
       GoRoute(
+        path: Rutas.busqueda,
+        name: 'busqueda',
+        builder: (context, state) => const BusquedaScreen(),
+      ),
+      GoRoute(
         path: Rutas.perfil,
         name: 'perfil',
         builder: (context, state) => const PerfilScreen(),
@@ -115,6 +121,9 @@ abstract final class Rutas {
 
   /// Comun a los dos roles: la pantalla resuelve cual mostrar segun el token.
   static const String perfil = '/perfil';
+
+  /// Buscar medico. La abre el paciente desde su listado de citas.
+  static const String busqueda = '/buscar';
 
   /// Accesibles sin sesión.
   static const Set<String> publicas = {login, registro};

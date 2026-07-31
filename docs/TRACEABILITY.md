@@ -28,10 +28,10 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-09 | ID desde el token | F05 | `PerfilApi` usa `/patients/me` y `/doctors/me`; ninguna ruta recibe id del cliente | ✅ |
 | RF-10 | Editar solo el propio | F05 | PATCH sin id para paciente; 403 del backend para médico ajeno | prueba de 403 + PATCH sin campos no editables | ✅ |
 | RF-11 | Estado de verificación | F05 | `BadgeVerificacion` — color + glifo + etiqueta + **explicación** de qué implica | 3 estados con prueba de widget | ✅ |
-| RF-12 | Catálogo especialidades | F06 | `especialidades` | | ⬜ |
-| RF-13 | Médico ↔ especialidad | F06 | `especialidades` | | ⬜ |
-| RF-14 | Filtrar por especialidad | F06 | `busqueda` | | ⚠️ filtro por especialidad sí; búsqueda por texto no existe ([#8](BACKEND_ISSUES.md)) |
-| RF-15 | Listados paginados | F06 | `busqueda` | | ⬜ |
+| RF-12 | Catálogo especialidades | F06 | `busqueda` — filtro horizontal con las 10 sembradas | `busqueda_repository_test.dart` | ✅ |
+| RF-13 | Médico ↔ especialidad | F06 | Especialidades anidadas en cada médico del listado | prueba de `especialidadesTexto` | ✅ |
+| RF-14 | Filtrar por especialidad | F06 | `FiltroEspecialidad` + `?especialidadId=` | prueba de que el filtro viaja | ⚠️ el filtro por especialidad funciona; **búsqueda por texto no existe en el backend** ([#8](BACKEND_ISSUES.md)) |
+| RF-15 | Listados paginados | F06 | `core/domain/pagina.dart` + scroll infinito con precarga | `pagina_test.dart` (16) — incluye el caso de última página exactamente llena | ✅ |
 | RF-16 | Definir franjas | F07 | `agenda/disponibilidad` | | ⬜ |
 | RF-17 | Activar/desactivar franja | F07 | `agenda/disponibilidad` | | ⬜ |
 | RF-18 | Turnos libres por fecha | F07 | `agenda/turnos` | | ⬜ |
@@ -73,7 +73,7 @@ tomarla al front en solitario.
 | RNF-04 | Sin secretos en código | F01 | `core/config/env.dart` (`String.fromEnvironment`, valida al arrancar) + hook pre-commit · 6 pruebas | ✅ |
 | RNF-05 | Cabeceras, CORS, rate limit | F14 | `nginx.conf` | ⬜ |
 | RNF-06 | Historial restringido | F09 | | ⬜ |
-| RNF-07 | Listados con paginación | F06 | | ⬜ |
+| RNF-07 | Listados con paginación | F06 | `Pagina<T>` calcula `totalPaginas` porque el backend no manda `lastPage`; límite recortado a 50 en el repositorio | ✅ |
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
 | RNF-10 | Concurrencia sin duplicar | F08 | Manejo de 409 | ⬜ |
