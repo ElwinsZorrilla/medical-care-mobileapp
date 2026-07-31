@@ -9,6 +9,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/busqueda/presentation/screens/busqueda_screen.dart';
+import '../../features/citas/presentation/screens/mis_citas_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
@@ -78,12 +79,12 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Rutas.misCitas,
         name: 'misCitas',
-        builder: (context, state) => const _EnConstruccion('Mis citas'),
+        builder: (context, state) => const MisCitasScreen(),
       ),
       GoRoute(
         path: Rutas.agenda,
         name: 'agenda',
-        builder: (context, state) => const _EnConstruccion('Mi agenda'),
+        builder: (context, state) => const MisCitasScreen(agenda: true),
       ),
       GoRoute(
         path: Rutas.disponibilidad,
@@ -145,15 +146,4 @@ abstract final class Rutas {
     // paciente para que la app no quede en una ruta que no existe.
     TipoUsuario.admin => misCitas,
   };
-}
-
-/// Marcador para las áreas que llegan en fases posteriores.
-class _EnConstruccion extends StatelessWidget {
-  const _EnConstruccion(this.titulo);
-
-  final String titulo;
-
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text(titulo)));
 }

@@ -35,12 +35,12 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-16 | Definir franjas | F07 | `features/agenda/.../disponibilidad_screen.dart` | `agenda_repository_test.dart` (26), `disponibilidad_screen_test.dart` (13) | ✅ |
 | RF-17 | Activar/desactivar franja | F07 | Desactivar con confirmación; el backend no ofrece reactivar | prueba de confirmar y de cancelar | ⚠️ solo desactivar: `PATCH /desactivar` es de una sola dirección |
 | RF-18 | Turnos libres por fecha | F07 | `AgendaRepository.turnos` resuelve `?fecha=` en calendario dominicano | prueba de que 01:00Z del 18 pide el 17 | ✅ |
-| RF-19 | Reservar cita | F08 | `citas/reservar` | | ⬜ |
-| RF-20 | **Control de concurrencia** | F08 | `citas/repository` | | ⬜ |
-| RF-21 | Motivo de consulta | F08 | `citas/reservar` | | ⬜ |
-| RF-22 | Cancelar con motivo | F08 | `citas/cancelar` | | ⬜ |
+| RF-19 | Reservar cita | F08 | `CitasRepository.reservar`; manda `fecha` y el ISO exacto del turno | `citas_repository_test.dart` (20) | ✅ |
+| RF-20 | **Control de concurrencia** | F08 | `ReaccionAConflicto.para` clasifica el 409 sobrecargado; nunca reintenta en silencio | 6 pruebas: turno tomado, carrera perdida, modalidad, 400 de franja, conflicto desconocido, sin conexión | ✅ |
+| RF-21 | Motivo de consulta | F08 | `motivoConsulta` opcional en la reserva, visible en la tarjeta | prueba de ida y vuelta | ✅ |
+| RF-22 | Cancelar con motivo | F08 | Diálogo con motivo obligatorio; 403 y 409 con mensaje propio | 4 pruebas de widget + 3 de repositorio | ✅ |
 | RF-23 | Estados de cita | F02+F08 | `core/domain/cita_estado.dart`, `core/widgets/status_rail.dart` | `cita_estado_test.dart` (12) + 20 goldens | ⚠️ Los 5 estados mapeados, pintados y con golden. `CONFIRMADA` y `NO_ASISTIO` son inalcanzables: no hay endpoint de transición ([#4](BACKEND_ISSUES.md)) |
-| RF-24 | Mis citas / mi agenda | F08 | `citas/lista` | | ⬜ |
+| RF-24 | Mis citas / mi agenda | F08 | Una pantalla, dos rutas según rol; scroll infinito y caché de médicos | pruebas de los 4 estados y de ambos roles | ✅ |
 | RF-25 | Registrar consulta | F09 | `historial/consulta` | | ⬜ |
 | RF-26 | Emitir recetas | F09 | `historial/receta` | | ⬜ |
 | RF-27 | Ver historial | F09 | `historial/paciente` | | ⬜ |
@@ -76,7 +76,7 @@ tomarla al front en solitario.
 | RNF-07 | Listados con paginación | F06 | `Pagina<T>` calcula `totalPaginas` porque el backend no manda `lastPage`; límite recortado a 50 en el repositorio | ✅ |
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
-| RNF-10 | Concurrencia sin duplicar | F08 | Manejo de 409 | ⬜ |
+| RNF-10 | Concurrencia sin duplicar | F08 | El backend lo garantiza (bloqueo pesimista + índice único, verificado en F00 con carrera real). El front refresca la grilla y avisa; **nunca reintenta en silencio** | ✅ |
 | RNF-11 | Arquitectura modular | F01,F04,F05 | Dos módulos independientes (`auth`, `perfil`) con las tres capas. Ninguno importa del otro: lo compartido (`Especialidad`, `TipoUsuario`, `FechaCalendario`) subió a `core/domain/`. | ✅ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
