@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Regla R1: cero atribucion de autoria de IA en el historial.
+set -euo pipefail
+MSG=$(cat "$1")
+
+if grep -qiE 'co-authored-by|generated with|claude|anthropic|ai-assisted|copilot|🤖' <<< "$MSG"; then
+  echo $'\033[31mBLOQUEADO:\033[0m el mensaje contiene atribucion de IA. Quitarla.' >&2
+  exit 1
+fi
+
+# Conventional commits en espanol
+if ! grep -qE '^(feat|fix|refactor|test|docs|chore|perf|style|build|ci)(\([a-z]+\))?!?: .{10,}' <<< "$(head -1 <<< "$MSG")"; then
+  echo $'\033[31mBLOQUEADO:\033[0m primera linea invalida.' >&2
+  echo 'Formato: tipo(ambito): descripcion de al menos 10 caracteres' >&2
+  echo 'Ej: feat(citas): reserva con control de concurrencia optimista' >&2
+  exit 1
+fi
+
+if [ "$(head -1 <<< "$MSG" | wc -c)" -gt 73 ]; then
+  echo $'\033[33mAVISO:\033[0m la primera linea pasa de 72 caracteres.' >&2
+fi

@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Gate de calidad. Bloquea el commit si la revision no esta aprobada
+# o si se cuela un archivo que no debe versionarse.
+set -euo pipefail
+
+RED=$'\033[31m'; YEL=$'\033[33m'; GRN=$'\033[32m'; OFF=$'\033[0m'
+fail() { echo "${RED}BLOQUEADO:${OFF} $1" >&2; exit 1; }
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# ── 1. Archivos prohibidos ───────────────────────────────────────────────
+while IFS= read -r f; do
+  case "$f" in
+    CLAUDE.md|.claude/*|.cursor/*|.mcp.json|.review/*)
+      fail "'$f' es artefacto de herramienta de IA. No se versiona." ;;
+    .env|.env.*)
+      [ "$f" = ".env.example" ] || fail "'$f' contiene secretos." ;;
+    *.jks|*.keystore|key.properties|*.p12|*.pem)
+      fail "'$f' es material de firma. No se versiona." ;;
+    */google-services.json|*/GoogleService-Info.plist)
+      fail "'$f' lleva credenciales de proyecto." ;;
+  esac
+done <<< "$staged"
+
+# ── 2. Secretos incrustados (RNF-04) ─────────────────────────────────────
+suspect=$(git diff --cached -U0 -- '*.dart' \
+  | grep -E "^\+.*(apiKey|api_key|secretKey|clientSecret|password|accessToken|refreshToken)[[:space:]]*[:=][[:space:]]*['\"][^'\"]" \
+  | grep -vE "fromEnvironment|dart-define|// ignore|controller\.text|\.value" || true)
+
+if [ -n "$suspect" ]; then
+  echo "${YEL}Posible secreto en duro (RNF-04):${OFF}" >&2
+  echo "$suspect" >&2
+  fail "Usar --dart-define / String.fromEnvironment."
+fi
+
+# ── 3. Rastro de autoria de IA en el codigo ──────────────────────────────
+if git diff --cached -U0 | grep -qiE '^\+.*(co-authored-by|generated with claude|claude\.ai/code|ai-assisted|🤖)'; then
+  fail "Rastro de atribucion de IA en el diff. Eliminarlo."
+fi
+
+# ── 4. El veredicto de revision ──────────────────────────────────────────
+V=".review/verdict"
+[ -f "$V" ] || fail "No hay revision. Correr /code-reviewer-pro y guardar el veredicto en $V"
+
+grep -q '^VERDICT: APPROVED$' "$V" \
+  || fail "La revision no esta aprobada. Contenido de $V: $(head -1 "$V")"
+
+# El APPROVED caduca: si se toco codigo despues de aprobar, hay que revisar otra vez.
+newest=""
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  if [ -z "$newest" ] || [ "$f" -nt "$newest" ]; then newest="$f"; fi
+done <<< "$staged"
+
+if [ -n "$newest" ] && [ "$newest" -nt "$V" ]; then
+  fail "El APPROVED caduco: '$newest' cambio despues de la revision. Revisar de nuevo."
+fi
+
+echo "${GRN}Gate OK${OFF} — revision aprobada y vigente."
