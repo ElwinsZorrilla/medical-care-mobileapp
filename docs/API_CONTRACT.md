@@ -118,7 +118,17 @@ expire. Consecuencias:
 | POST | `/api/doctors` | 409 si ya existe |
 | GET | `/api/doctors/me` | |
 | GET/PATCH | `/api/doctors/{id}` | PATCH → 403 si no es el titular |
-| PUT | `/api/doctors/{id}/especialidades` | `{ idsEspecialidades: number[] }` |
+| PUT | `/api/doctors/{id}/especialidades` | `{ especialidadIds: number[] }` |
+
+**Lo que NO se puede editar.** `UpdatePatientDto` no incluye
+`documentoIdentidad` y `UpdateDoctorDto` no incluye `numExequatur`: los dos
+son identificadores legales y el backend los fija al crear el perfil. La UI de
+edición debe mostrarlos como solo lectura, no como campos deshabilitados que
+sugieran que podrían habilitarse.
+
+**`estadoVerificacion`** (RF-11): `PENDIENTE` · `VERIFICADO` · `RECHAZADO`.
+No hay endpoint que lo cambie desde la app — lo mueve un administrador del
+lado servidor.
 
 **Paciente** (`PatientResponseDto`): `idPaciente, idUsuario, nombres, apellidos,
 documentoIdentidad, fechaNacimiento` obligatorios; `sexo ('M'|'F'), direccion,

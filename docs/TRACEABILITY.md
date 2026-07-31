@@ -23,11 +23,11 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-04 | Refresh token | F03 | `core/network/refresh_interceptor.dart` | `refresh_interceptor_test.dart` — 5 peticiones concurrentes con 401 disparan **1** refresh | ✅ |
 | RF-05 | Logout invalida refresh | F04 | `auth/repository` | | ⚠️ no hay `/auth/logout` ni revocación; solo borrado local ([#3](BACKEND_ISSUES.md)) |
 | RF-06 | Acceso por rol | F04 | `core/router/app_router.dart` — `redirect` con los 3 estados de sesión | `router_guard_test.dart` (9) | ✅ |
-| RF-07 | Perfil paciente | F05 | `perfil/paciente` | | ⬜ |
-| RF-08 | Perfil médico | F05 | `perfil/medico` | | ⬜ |
-| RF-09 | ID desde el token | F05 | `perfil/repository` | | ⬜ |
-| RF-10 | Editar solo el propio | F05 | `perfil/guards` | | ⬜ |
-| RF-11 | Estado de verificación | F05 | `perfil/medico` | | ⬜ |
+| RF-07 | Perfil paciente | F05 | `features/perfil/.../perfil_screen.dart` | `perfil_repository_test.dart`, `perfil_screen_test.dart` | ✅ |
+| RF-08 | Perfil médico | F05 | misma pantalla, resuelta por rol del token | mapeo de especialidades y tarifa | ✅ |
+| RF-09 | ID desde el token | F05 | `PerfilApi` usa `/patients/me` y `/doctors/me`; ninguna ruta recibe id del cliente | ✅ |
+| RF-10 | Editar solo el propio | F05 | PATCH sin id para paciente; 403 del backend para médico ajeno | prueba de 403 + PATCH sin campos no editables | ✅ |
+| RF-11 | Estado de verificación | F05 | `BadgeVerificacion` — color + glifo + etiqueta + **explicación** de qué implica | 3 estados con prueba de widget | ✅ |
 | RF-12 | Catálogo especialidades | F06 | `especialidades` | | ⬜ |
 | RF-13 | Médico ↔ especialidad | F06 | `especialidades` | | ⬜ |
 | RF-14 | Filtrar por especialidad | F06 | `busqueda` | | ⚠️ filtro por especialidad sí; búsqueda por texto no existe ([#8](BACKEND_ISSUES.md)) |
@@ -77,7 +77,7 @@ tomarla al front en solitario.
 | RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
 | RNF-09 | Healthcheck | F14 | `/healthz` | ⬜ |
 | RNF-10 | Concurrencia sin duplicar | F08 | Manejo de 409 | ⬜ |
-| RNF-11 | Arquitectura modular | F01,F04 | `lib/core/` + `lib/features/auth/{domain,data,presentation}`. Primer módulo con las tres capas separadas. | ⚠️ falta un segundo dominio para demostrar el aislamiento |
+| RNF-11 | Arquitectura modular | F01,F04,F05 | Dos módulos independientes (`auth`, `perfil`) con las tres capas. Ninguno importa del otro: lo compartido (`Especialidad`, `TipoUsuario`, `FechaCalendario`) subió a `core/domain/`. | ✅ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
 | RNF-14 | Pruebas por módulo | todas | Cobertura ≥ 80% | ⬜ |

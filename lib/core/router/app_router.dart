@@ -7,6 +7,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../domain/tipo_usuario.dart';
 
 part 'app_router.g.dart';
@@ -82,6 +83,11 @@ GoRouter appRouter(Ref ref) {
         name: 'agenda',
         builder: (context, state) => const _EnConstruccion('Mi agenda'),
       ),
+      GoRoute(
+        path: Rutas.perfil,
+        name: 'perfil',
+        builder: (context, state) => const PerfilScreen(),
+      ),
     ],
   );
 }
@@ -106,6 +112,9 @@ abstract final class Rutas {
   static const String registro = '/registro';
   static const String misCitas = '/mis-citas';
   static const String agenda = '/agenda';
+
+  /// Comun a los dos roles: la pantalla resuelve cual mostrar segun el token.
+  static const String perfil = '/perfil';
 
   /// Accesibles sin sesión.
   static const Set<String> publicas = {login, registro};
