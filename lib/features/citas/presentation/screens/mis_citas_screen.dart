@@ -66,6 +66,9 @@ class _MisCitasScreenState extends ConsumerState<MisCitasScreen> {
     return AppScaffold(
       titulo: widget.agenda ? 'Mi agenda' : 'Mis citas',
       acciones: [
+        // RF-28: la puerta a la bandeja, desde la pantalla de inicio de los
+        // dos roles.
+        const CampanaNotificaciones(),
         // RF-16, RF-17: la puerta a las franjas del medico. Estaba registrada
         // como ruta y ninguna linea de lib/ navegaba a ella.
         if (widget.agenda)

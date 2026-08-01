@@ -31,6 +31,14 @@ abstract final class Redactor {
     'diagnostico', 'tratamiento', 'observaciones', 'signosvitales',
     'alergias', 'tiposangre', 'medicamento', 'dosis', 'frecuencia',
     'indicaciones', 'motivoconsulta', 'motivo', 'recetas', 'seguromedico',
+    // Notificaciones y chat — RF-28 a RF-34. El cuerpo de una notificacion
+    // dice "tu cita con el Dr. X del jueves"; el de un mensaje es la
+    // conversacion clinica entera.
+    'titulo', 'cuerpo', 'contenido',
+    // **Credenciales, no metadatos.** Quien tenga `urlSala` entra a la
+    // videollamada de un paciente sin mas; `urlAdjunto` puede ser una URL
+    // firmada a un documento medico. En un log son una puerta abierta.
+    'urlsala', 'urladjunto',
   };
 
   /// Si esta clave no puede aparecer en un log.

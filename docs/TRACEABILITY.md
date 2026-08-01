@@ -56,9 +56,9 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-25 | Registrar consulta | F09,F15 | `registro_consulta_screen.dart`, desde la agenda del medico. Avisa **antes** de guardar que la cita queda COMPLETADA: el efecto es irreversible | `historial_test.dart` (21) + `registro_consulta_screen_test.dart` (8) | ✅ |
 | RF-26 | Emitir recetas | F09,F15 | Se agregan en un dialogo y viajan **en la misma llamada** que la consulta: dos peticiones dejarian la consulta sin recetas si la segunda falla | prueba de que viajan juntas, de repositorio y de widget | ✅ |
 | RF-27 | Ver historial | F09 | `historial_screen.dart`, ruta elegida por rol | `historial_screen_test.dart` (11) | ✅ |
-| RF-28 | Notificar eventos | F10 | `notificaciones` | | ⛔ |
-| RF-29 | Recordatorios 24h/1h | F10 | `notificaciones/push` | | ⛔ |
-| RF-30 | Marcar leída | F10 | `notificaciones/bandeja` | | ⛔ |
+| RF-28 | Notificar eventos | F10 | `features/notificaciones` — bandeja **in-app**, no push: el backend guarda y sirve, pero no hay proveedor de push configurado. Prometer una alerta que nunca llega es peor que no prometerla. Campana con contador en la pantalla de inicio de los dos roles | `notificaciones_test.dart` (13) | ✅ |
+| RF-29 | Recordatorios 24h/1h | F10 | Los genera el backend con un cron cada 5 min; el front los recibe como notificaciones de tipo `RECORDATORIO` y los pagina con scroll infinito | prueba de que `cargarMas` concatena y no reemplaza | ✅ |
+| RF-30 | Marcar leída | F10 | Una a una —**optimista**, la lista cambia al instante y se revierte si el servidor la rechaza— o todas de golpe con una sola petición | 3 pruebas, incluida la de reversión tras un 404 | ✅ |
 | RF-31 | Conversación | F11 | `chat/conversacion` | | ⛔ |
 | RF-32 | Mensajes en tiempo real | F11 | `chat/socket` | | ⛔ |
 | RF-33 | Estado de lectura | F11 | `chat/mensaje` | | ⛔ |
@@ -86,16 +86,16 @@ tomarla al front en solitario.
 | RNF-05 | Cabeceras, CORS, rate limit | F14 | `docker/security-headers.conf` (nosniff, DENY, Referrer-Policy, Permissions-Policy, CSP) + `limit_req` a 30 r/s con ráfaga 100, y `server_tokens off`. **CORS se elimina por topología**: nginx proxea `/api` al backend, mismo origen, sin preflight. Medido con `curl` sobre el contenedor, no leído del archivo — el job `imagen` del CI repite las comprobaciones | ✅ |
 | RNF-06 | Historial restringido | F09 | **No hay parámetro de paciente**: la ruta la elige el rol de la sesión, así que el acceso cruzado no se puede expresar. El backend además filtra por token | ✅ |
 | RNF-07 | Listados con paginación | F06 | `Pagina<T>` calcula `totalPaginas` porque el backend no manda `lastPage`; límite recortado a 50 en el repositorio | ✅ |
-| RNF-08 | Notificaciones asíncronas | — | Back | ⬜ |
+| RNF-08 | Notificaciones asíncronas | F10 | El backend las emite fuera de la transacción de reserva y las agenda por cron. El front las consume; no hay push, y está declarado | ✅ |
 | RNF-09 | Healthcheck | F14 | `/healthz` responde `ok` y devuelve 503 si falta el build. `HEALTHCHECK` del contenedor verificado en `healthy` — usaba `localhost`, que resuelve a ::1, y quedaba `unhealthy` para siempre | ✅ |
 | RNF-10 | Concurrencia sin duplicar | F08 | El backend lo garantiza (bloqueo pesimista + índice único, verificado en F00 con carrera real). El front refresca la grilla y avisa; **nunca reintenta en silencio** | ✅ |
-| RNF-11 | Arquitectura modular | F01,F04,F05,F13 | Seis módulos con las tres capas; lo compartido de dominio (`Especialidad`, `TipoUsuario`, `FechaCalendario`, `PerfilMedico`) subió a `core/`. **Corregido en F13:** esta fila decía "ninguno importa del otro" y era falso — cinco features importan `dioClienteProvider` y `sesionActualProvider` desde `features/auth/presentation/` (7 archivos). `test/arquitectura_test.dart` vuelve la regla ejecutable y lleva el registro; el rediseño de dónde vive la sesión queda pendiente. Ver `HARDENING.md` §7.b | ⚠️ |
+| RNF-11 | Arquitectura modular | F01,F04,F05,F13,F16 | Siete modulos con las tres capas. **La deuda de imports cruzados bajo de 7 archivos a 3**: `dioClienteProvider` y `secureStoreProvider` subieron a `core/network/infra_provider.dart`, desbloqueado invirtiendo el aviso de sesion expirada — `core` lo emite y `auth` lo escucha. Los 3 que quedan necesitan `sesionActualProvider`, que es estado de sesion y no infraestructura. `test/arquitectura_test.dart` lo verifica y deriva los features del disco | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
-| RNF-14 | Pruebas por modulo | todas,F13,F15 | **84.9 %** de linea, 486 pruebas (482 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. Ver `docs/HARDENING.md` | ✅ |
+| RNF-14 | Pruebas por modulo | todas,F13,F15 | **82.7 %** de linea, 505 pruebas (501 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. Ver `docs/HARDENING.md` | ✅ |
 | RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
-| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **486 pruebas, cobertura 84.9 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
+| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **505 pruebas, cobertura 82.7 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `core/time/app_time.dart` es el único borde de conversión; desfase fijo −4 h para coincidir con el backend (ADR-005). `test/core/time/disciplina_utc_test.dart` recorre `lib/` y falla ante `DateTime.now()` o formateo fuera de `AppTime` — 24 pruebas, comprobada falsificable | ✅ |
 | RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
 

@@ -17,14 +17,22 @@ import 'package:flutter_test/flutter_test.dart';
 /// `test/contrato_api_test.dart` en seis para cumplir la letra de la regla
 /// eliminaría lo único que lo hace útil.
 void main() {
-  const features = {
-    'agenda',
-    'auth',
-    'busqueda',
-    'citas',
-    'historial',
-    'perfil',
-  };
+  /// Se derivan del disco y no de una lista a mano.
+  ///
+  /// La lista escrita quedo desactualizada al crear `notificaciones`: la
+  /// guarda dejo de ver cualquier import hacia el modulo nuevo y volvio a
+  /// vivir solo en Markdown para el, que es justo lo que denuncia el docstring
+  /// de este archivo.
+  final features = Directory('lib/features')
+      .listSync()
+      .whereType<Directory>()
+      // Separador de Windows y de POSIX: `listSync` devuelve `lib/features\x`
+      // en Windows, y partir solo por `/` dejaba nombres como `features\auth`.
+      // Con eso la guarda dejaba de reconocer cualquier feature y pasaba en
+      // verde sin comprobar nada — lo atrapo su propia asercion de que el
+      // registro de deuda solo puede encoger.
+      .map((d) => d.path.split(RegExp(r'[/\\]')).last)
+      .toSet();
 
   /// Violaciones que ya existían cuando se escribió esta guarda.
   ///
@@ -43,12 +51,8 @@ void main() {
   /// El registro solo puede encoger: una entrada que ya no corresponde también
   /// falla, así que no se puede dejar podrido.
   const deudaConocida = {
-    'lib/features/agenda/presentation/providers/agenda_provider.dart',
-    'lib/features/busqueda/presentation/providers/busqueda_provider.dart',
-    'lib/features/citas/presentation/providers/citas_provider.dart',
     'lib/features/historial/presentation/providers/historial_provider.dart',
     'lib/features/historial/presentation/screens/historial_screen.dart',
-    'lib/features/perfil/presentation/providers/perfil_provider.dart',
     'lib/features/perfil/presentation/screens/perfil_screen.dart',
   };
 

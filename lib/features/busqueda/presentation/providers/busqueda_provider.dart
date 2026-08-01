@@ -4,8 +4,8 @@ import '../../../../core/domain/especialidad.dart';
 import '../../../../core/domain/medico.dart';
 import '../../../../core/domain/pagina.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/infra_provider.dart';
 import '../../../../core/network/result.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/busqueda_api.dart';
 import '../../data/busqueda_repository.dart';
 

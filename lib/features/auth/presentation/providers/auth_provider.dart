@@ -1,10 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/tipo_usuario.dart';
-import '../../../../core/network/dio_client.dart';
+import '../../../../core/network/infra_provider.dart';
 import '../../../../core/network/result.dart';
-import '../../../../core/storage/secure_store.dart';
 import '../../../../core/theme/density_provider.dart';
 import '../../data/auth_api.dart';
 import '../../data/auth_repository.dart';
@@ -12,18 +10,10 @@ import '../../domain/usuario.dart';
 
 part 'auth_provider.g.dart';
 
-@Riverpod(keepAlive: true)
-SecureStore secureStore(Ref ref) => SecureStoreImpl();
-
-@Riverpod(keepAlive: true)
-Dio dioCliente(Ref ref) => DioClient.crear(
-  store: ref.watch(secureStoreProvider),
-  // Cuando el refresh falla, el interceptor avisa acá y la sesión cae a
-  // anónima. Sin esto el usuario se quedaría en una pantalla que ya no puede
-  // cargar nada, viendo errores en vez de la pantalla de login.
-  onSesionExpirada: () async =>
-      ref.read(sesionActualProvider.notifier).expirar(),
-);
+// `secureStoreProvider` y `dioClienteProvider` viven ahora en
+// `core/network/infra_provider.dart`. Estaban aquí y los seis features los
+// importaban desde este archivo: siete violaciones de "un feature no importa
+// de otro" (rubro 3.3), arrastradas desde F04.
 
 @Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) => AuthRepository(
@@ -40,6 +30,12 @@ AuthRepository authRepository(Ref ref) => AuthRepository(
 class SesionActual extends _$SesionActual {
   @override
   Sesion build() {
+    // `core` avisa cuando el refresh ya no puede recuperar la sesión. Se
+    // **escucha** en vez de que `core` llame acá: así la dependencia va de
+    // feature a core y no al revés, que es lo que impedía subir el cliente
+    // HTTP en F13.
+    ref.listen(sesionExpiradaProvider, (_, _) => expirar());
+
     // Se dispara sin await: el estado inicial es "desconocida" y la UI
     // muestra el splash hasta que esto resuelva.
     Future.microtask(restaurar);

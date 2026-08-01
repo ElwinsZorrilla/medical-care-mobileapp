@@ -9,6 +9,7 @@ export 'app_card.dart';
 export 'app_scaffold.dart';
 export 'app_text_field.dart';
 export 'avatar.dart';
+export 'campana_notificaciones.dart';
 export 'data_field.dart';
 export 'empty_state.dart';
 export 'error_state.dart';

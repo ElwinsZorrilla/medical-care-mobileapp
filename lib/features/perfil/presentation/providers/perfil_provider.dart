@@ -2,8 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/fecha_calendario.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/infra_provider.dart';
 import '../../../../core/network/result.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/perfil_api.dart';
 import '../../data/perfil_repository.dart';
 import '../../domain/perfil.dart';

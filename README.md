@@ -61,10 +61,10 @@ el APK **no** se compila en el contenedor y cómo se regeneran los goldens.
 
 ## Estado
 
-De los **37 requerimientos funcionales**: 23 completos, 4 parciales con su
-razón escrita, y **10 sin backend**.
+De los **37 requerimientos funcionales**: 26 completos, 4 parciales con su
+razón escrita, y **7 sin backend en el front todavía**.
 
-Los 10 (RF-28..RF-37 — notificaciones, chat y videollamada) no son trabajo
+Los 7 restantes (RF-31..RF-37 — chat y videollamada) no son trabajo
 pendiente del front: las tablas existen del lado servidor pero **no hay
 endpoints**, ni transporte de tiempo real, ni proveedor de push o de video.
 Verificado contra el Swagger real, no supuesto. Hay un pull request abierto en
@@ -80,8 +80,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 84.9 % (excluyendo código generado) |
-| Pruebas | 486 (482 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 82.7 % (excluyendo código generado) |
+| Pruebas | 505 (501 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

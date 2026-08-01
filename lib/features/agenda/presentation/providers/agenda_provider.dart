@@ -1,8 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/modalidad.dart';
+import '../../../../core/network/infra_provider.dart';
 import '../../../../core/network/result.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/agenda_api.dart';
 import '../../data/agenda_repository.dart';
 import '../../domain/disponibilidad.dart';

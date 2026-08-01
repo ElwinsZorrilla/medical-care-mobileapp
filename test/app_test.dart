@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medicare/app.dart';
+import 'package:medicare/core/network/infra_provider.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/storage/secure_store.dart';
-import 'package:medicare/features/auth/presentation/providers/auth_provider.dart';
 
 /// Doble en memoria: `flutter_secure_storage` habla por canal nativo y en un
 /// test de widget no hay plataforma que responda.

@@ -203,6 +203,13 @@ void main() {
           // use — el redactor mira la clave, no de qué esquema viene, y
           // perder la dirección de una clínica en el log es barato.
           'ciudad', 'latitud', 'longitud',
+          // Notificaciones, chat y video (RF-28 a RF-37): identificadores,
+          // enumerados y marcas de tiempo. Ninguno dice quien es la persona
+          // ni que le pasa.
+          'idnotificacion', 'idconversacion', 'idmensaje', 'idvideollamada',
+          'idusuarioremitente', 'canal', 'leida', 'leido', 'noleidos', 'tipo',
+          'proveedor', 'fechaenvio', 'fechaultimomensaje', 'horainicioreal',
+          'horafinreal',
           // Nombres: los de médico son públicos (RF-13 los pinta en el
           // listado). Se dejan visibles a sabiendas; el resto de la ficha —
           // documento, nacimiento, dirección— sí se tapa, que es lo que impide

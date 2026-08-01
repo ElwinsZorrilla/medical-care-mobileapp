@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/pagina.dart';
 import '../../../../core/domain/tipo_usuario.dart';
+import '../../../../core/network/infra_provider.dart';
 import '../../../../core/network/result.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/historial_api.dart';
