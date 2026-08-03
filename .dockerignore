@@ -47,6 +47,15 @@ LOOP.md
 # con PathNotFoundException — comprobado en el primer build de F14.
 !docs/openapi.json
 
+# Misma excepcion, misma razon: test/documentacion_test.dart deriva de estos
+# dos las cifras de cierre —cuantos RF completos, cuantos parciales— en vez de
+# confiar en que alguien las recalcule al cambiar la matriz. Ya fallo una vez
+# al no hacerlo. Entraron al artefacto porque un test los lee, no porque sean
+# documentacion; la alternativa era saltar la prueba dentro del contenedor, y
+# una prueba que se salta en silencio es justo lo que este proyecto no hace.
+!docs/TRACEABILITY.md
+!README.md
+
 # ── Editores y SO ────────────────────────────────────────────────────────
 .idea/
 .vscode/

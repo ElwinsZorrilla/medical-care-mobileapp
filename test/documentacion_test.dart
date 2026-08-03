@@ -13,8 +13,20 @@ import 'package:flutter_test/flutter_test.dart';
 /// vez de a una regla: **una afirmacion que nadie vuelve a derivar deja de ser
 /// cierta en silencio.**
 void main() {
-  final matriz = File('docs/TRACEABILITY.md').readAsStringSync();
-  final readme = File('README.md').readAsStringSync();
+  /// Se leen dentro de `main` y no como `final` de nivel superior.
+  ///
+  /// Si el archivo falta, un `final` de nivel superior revienta al **cargar**
+  /// la biblioteca y el reporte dice `loading documentacion_test.dart` sin
+  /// nombrar la causa. Paso: `.dockerignore` excluye `*.md` y la prueba fallo
+  /// dentro del contenedor con ese mensaje. Asi el fallo cae en un test con
+  /// nombre y con la ruta que no aparecio.
+  late final String matriz;
+  late final String readme;
+
+  setUpAll(() {
+    matriz = File('docs/TRACEABILITY.md').readAsStringSync();
+    readme = File('README.md').readAsStringSync();
+  });
 
   /// Cuenta las filas de la matriz por estado.
   ///
