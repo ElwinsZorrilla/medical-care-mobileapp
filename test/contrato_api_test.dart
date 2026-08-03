@@ -3,18 +3,24 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medicare/core/data/notificaciones_api.dart';
+import 'package:medicare/core/data/notificaciones_dto.dart';
 import 'package:medicare/features/agenda/data/agenda_api.dart';
 import 'package:medicare/features/agenda/data/agenda_dto.dart';
 import 'package:medicare/features/auth/data/auth_api.dart';
 import 'package:medicare/features/auth/data/auth_dto.dart';
 import 'package:medicare/features/busqueda/data/busqueda_api.dart';
 import 'package:medicare/features/busqueda/data/busqueda_dto.dart';
+import 'package:medicare/features/chat/data/chat_api.dart';
+import 'package:medicare/features/chat/data/chat_dto.dart';
 import 'package:medicare/features/citas/data/citas_api.dart';
 import 'package:medicare/features/citas/data/citas_dto.dart';
 import 'package:medicare/features/historial/data/historial_api.dart';
 import 'package:medicare/features/historial/data/historial_dto.dart';
 import 'package:medicare/features/perfil/data/perfil_api.dart';
 import 'package:medicare/features/perfil/data/perfil_dto.dart';
+import 'package:medicare/features/video/data/video_api.dart';
+import 'package:medicare/features/video/data/video_dto.dart';
 
 /// Verifica la petición que sale de verdad — ruta, método y query — contra
 /// docs/API_CONTRACT.md.
@@ -444,6 +450,184 @@ void main() {
 
       expect(espia.uri.path, '/api/doctors/7');
       expect(espia.pedido.data, {'biografia': 'Hola'});
+    });
+  });
+
+  group('notificaciones — RF-28, RF-30', () {
+    const notificacion = NotificacionDto(
+      idNotificacion: 4,
+      tipo: 'RECORDATORIO',
+      titulo: 'Cita confirmada',
+      cuerpo: 'Manana a las 08:00.',
+      leida: false,
+      fechaEnvio: '2026-08-17T12:00:00.000Z',
+    );
+
+    test('la bandeja se pide sin id de usuario', () async {
+      final espia = _Espia(
+        const PaginaNotificacionesDto(
+          data: [notificacion],
+          total: 1,
+          page: 1,
+          limit: 10,
+        ).toJson(),
+      );
+      final pagina = await NotificacionesApi(
+        _dio(espia),
+      ).bandeja(pagina: 2, limite: 5);
+
+      expect(espia.uri.path, '/api/notifications/me');
+      expect(espia.uri.queryParameters, {'page': '2', 'limit': '5'});
+      // El `fromJson` real, no un doble: si el backend renombrara un campo
+      // esto se pone rojo aca y no en produccion.
+      expect(pagina.data.single.titulo, 'Cita confirmada');
+      expect(pagina.total, 1);
+    });
+
+    test('el contador lee `noLeidas`, que es como se llama', () async {
+      // Estaba declarado en la revision de F10: si el back devolviera
+      // `sinLeer` en vez de `noLeidas`, el badge quedaria en cero y la suite
+      // seguiria verde. Esto lo ejerce de verdad.
+      final espia = _Espia({'noLeidas': 3});
+      final n = await NotificacionesApi(_dio(espia)).sinLeer();
+
+      expect(espia.uri.path, '/api/notifications/me/no-leidas');
+      expect(n, 3);
+    });
+
+    test('marcar una va a su id; marcar todas, a `me`', () async {
+      final una = _Espia(notificacion.toJson());
+      await NotificacionesApi(_dio(una)).marcarLeida(4);
+      expect(una.uri.path, '/api/notifications/4/leida');
+      expect(una.metodo, 'PATCH');
+
+      final todas = _Espia(<String, dynamic>{});
+      await NotificacionesApi(_dio(todas)).marcarTodasLeidas();
+      expect(todas.uri.path, '/api/notifications/me/leidas');
+    });
+  });
+
+  group('chat — RF-31, RF-33, RF-34', () {
+    const conversacion = ConversacionDto(
+      idConversacion: 1,
+      idPaciente: 3,
+      idMedico: 7,
+      noLeidos: 2,
+      fechaUltimoMensaje: '2026-08-17T12:00:00.000Z',
+    );
+    const mensaje = MensajeDto(
+      idMensaje: 9,
+      idConversacion: 1,
+      idUsuarioRemitente: 30,
+      contenido: 'Buenos dias',
+      fechaEnvio: '2026-08-17T12:00:00.000Z',
+    );
+
+    test('los hilos se piden sin id de usuario — RF-09', () async {
+      final espia = _Espia([conversacion.toJson()]);
+      final hilos = await ChatApi(_dio(espia)).conversaciones();
+
+      expect(espia.uri.path, '/api/chat/conversations');
+      expect(hilos.single.noLeidos, 2);
+      expect(hilos.single.fechaUltimoMensaje, '2026-08-17T12:00:00.000Z');
+    });
+
+    test('abrir manda el id del medico en el cuerpo', () async {
+      final espia = _Espia(conversacion.toJson());
+      await ChatApi(_dio(espia)).abrir(7);
+
+      expect(espia.uri.path, '/api/chat/conversations');
+      expect(espia.metodo, 'POST');
+      expect(espia.pedido.data, {'idMedico': 7});
+    });
+
+    test('sin cursor no viaja `antesDe`', () async {
+      // Un `antesDe=null` en la query devuelve 400: el backend valida el tipo.
+      final espia = _Espia([mensaje.toJson()]);
+      await ChatApi(_dio(espia)).mensajes(idConversacion: 1);
+
+      expect(espia.uri.path, '/api/chat/conversations/1/messages');
+      expect(espia.uri.queryParameters, {'limit': '30'});
+    });
+
+    test('con cursor viaja como `antesDe`, no como `page`', () async {
+      final espia = _Espia([mensaje.toJson()]);
+      final mensajes = await ChatApi(
+        _dio(espia),
+      ).mensajes(idConversacion: 1, antesDe: 31, limite: 15);
+
+      expect(espia.uri.queryParameters, {'limit': '15', 'antesDe': '31'});
+      expect(mensajes.single.contenido, 'Buenos dias');
+      expect(mensajes.single.idUsuarioRemitente, 30);
+    });
+
+    test('enviar sin adjunto no manda la clave vacia', () async {
+      final espia = _Espia(mensaje.toJson());
+      await ChatApi(
+        _dio(espia),
+      ).enviar(idConversacion: 1, contenido: 'Buenos dias');
+
+      expect(espia.uri.path, '/api/chat/conversations/1/messages');
+      expect(espia.pedido.data, {'contenido': 'Buenos dias'});
+    });
+
+    test('enviar con adjunto lo incluye — RF-34', () async {
+      final espia = _Espia(mensaje.toJson());
+      await ChatApi(_dio(espia)).enviar(
+        idConversacion: 1,
+        contenido: 'Mira esto',
+        urlAdjunto: '/uploads/analitica.pdf',
+      );
+
+      expect(espia.pedido.data, {
+        'contenido': 'Mira esto',
+        'urlAdjunto': '/uploads/analitica.pdf',
+      });
+    });
+
+    test('marcar leidos es PATCH sobre el hilo — RF-33', () async {
+      final espia = _Espia(<String, dynamic>{});
+      await ChatApi(_dio(espia)).marcarLeidos(1);
+
+      expect(espia.uri.path, '/api/chat/conversations/1/leidos');
+      expect(espia.metodo, 'PATCH');
+    });
+  });
+
+  group('videollamada — RF-35, RF-36, RF-37', () {
+    const sala = VideollamadaDto(
+      idVideollamada: 1,
+      idCita: 5,
+      proveedor: 'JITSI',
+      urlSala: 'https://meet.jit.si/medicare-3f1a',
+      estado: 'PROGRAMADA',
+    );
+
+    test('crear la sala es POST sobre la cita', () async {
+      final espia = _Espia(sala.toJson());
+      final creada = await VideoApi(_dio(espia)).crearOObtener(5);
+
+      expect(espia.uri.path, '/api/appointments/5/videollamada');
+      expect(espia.metodo, 'POST');
+      expect(creada.proveedor, 'JITSI');
+      expect(creada.estado, 'PROGRAMADA');
+    });
+
+    test('consultarla es GET a la misma ruta', () async {
+      final espia = _Espia(sala.toJson());
+      await VideoApi(_dio(espia)).porCita(5);
+
+      expect(espia.uri.path, '/api/appointments/5/videollamada');
+      expect(espia.metodo, 'GET');
+    });
+
+    test('el estado va en su propia subruta — RF-37', () async {
+      final espia = _Espia(sala.toJson());
+      await VideoApi(_dio(espia)).cambiarEstado(5, 'EN_CURSO');
+
+      expect(espia.uri.path, '/api/appointments/5/videollamada/estado');
+      expect(espia.metodo, 'PATCH');
+      expect(espia.pedido.data, {'estado': 'EN_CURSO'});
     });
   });
 }

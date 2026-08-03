@@ -5,6 +5,12 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 
 **Leyenda:** ⬜ pendiente · ✅ cubierto · ⚠️ parcial (con razón) · ⛔ sin backend
 
+> **Tras F16 (alcance completo).** Los 10 RF que en F00 quedaron ⛔ por falta
+> de API ya tienen backend. Se construyeron los tres módulos que faltaban
+> —notificaciones (F10), chat (F11) y videollamada (F12)— contra el servidor
+> real, sin un solo mock de endpoint. **36 de 37 RF quedan ✅**; RF-05 y RF-34
+> siguen ⚠️ por huecos del lado servidor que están nombrados, no escondidos.
+
 > **Tras F15 (cierre).** Auditar la matriz contra el codigo —en vez de
 > leerla— destapo que **seis requerimientos marcados como cubiertos no
 > tenian interfaz**: RF-18 a RF-21 y RF-25/RF-26 tenian dominio, repositorio
@@ -59,13 +65,13 @@ comprobar que los 37 RF están cubiertos, y lo que a vos te dice qué falta.
 | RF-28 | Notificar eventos | F10 | `features/notificaciones` — bandeja **in-app**, no push: el backend guarda y sirve, pero no hay proveedor de push configurado. Prometer una alerta que nunca llega es peor que no prometerla. Campana con contador en la pantalla de inicio de los dos roles | `notificaciones_test.dart` (13) | ✅ |
 | RF-29 | Recordatorios 24h/1h | F10 | Los genera el backend con un cron cada 5 min; el front los recibe como notificaciones de tipo `RECORDATORIO` y los pagina con scroll infinito | prueba de que `cargarMas` concatena y no reemplaza | ✅ |
 | RF-30 | Marcar leída | F10 | Una a una —**optimista**, la lista cambia al instante y se revierte si el servidor la rechaza— o todas de golpe con una sola petición | 3 pruebas, incluida la de reversión tras un 404 | ✅ |
-| RF-31 | Conversación | F11 | `chat/conversacion` | | ⛔ |
-| RF-32 | Mensajes en tiempo real | F11 | `chat/socket` | | ⛔ |
-| RF-33 | Estado de lectura | F11 | `chat/mensaje` | | ⛔ |
-| RF-34 | Adjuntar archivos | F11 | `chat/adjuntos` | | ⛔ |
-| RF-35 | Sesión de videollamada | F12 | `video/sala` | | ⛔ |
-| RF-36 | Enlace de sala | F12 | `video/repository` | | ⛔ |
-| RF-37 | Estado de videollamada | F12 | `video/estado` | | ⛔ |
+| RF-31 | Conversación | F11 | `features/chat` — lista de hilos, hilo con burbujas y redactor. Se abre desde la tarjeta del médico en la búsqueda, por una ruta puente para no cruzar features | `chat_test.dart` (29), `chat_screen_test.dart` (18), contrato (7) | ✅ |
+| RF-32 | Mensajes en tiempo real | F11 | `chat_socket.dart` sobre Socket.IO, namespace `/chat`, JWT en `handshake.auth` y **no** en la query: las URLs quedan en logs de proxy. El envío sigue yendo por REST — por socket, un mensaje escrito con la conexión caída se perdería sin código de estado | `chat_socket_test.dart` (6) + 4 de integración con el hilo | ✅ |
+| RF-33 | Estado de lectura | F11 | Entrar al hilo lo marca leído; el acuse del otro lado llega por `mensaje:leido`. El «Leído» solo se pinta en los mensajes propios: saber si uno mismo leyó no le dice nada a nadie | 5 pruebas, incluidas las de hilo ajeno | ✅ |
+| RF-34 | Adjuntar archivos | F11 | El campo `urlAdjunto` viaja y se pinta si viene | 2 pruebas | ⚠️ **no hay endpoint de subida** en todo `back/src/`: el backend acepta la referencia pero no recibe archivos. Se puede mostrar lo que ya exista del lado servidor, no subir nada. Por eso no se agregó un selector de archivos — un botón que no puede subir nada es un botón que miente |
+| RF-35 | Sesión de videollamada | F12 | `features/video` — `SalaScreen` desde la tarjeta de una cita virtual. Arranca con `POST`, que es idempotente: consultar primero para crear después deja una ventana en la que los dos participantes crean dos salas y se esperan mutuamente | `video_test.dart` (22), `sala_screen_test.dart` (13), contrato (3) | ✅ |
+| RF-36 | Enlace de sala | F12 | **La URL no se muestra en pantalla**: cualquiera que la vea entra a la consulta. El botón la abre con `url_launcher` en modo aplicación externa — la app de Jitsi si está instalada, el navegador si no. Un WebView empotrado no tendría resueltos los permisos de cámara y dejaría el secreto dentro del proceso | prueba de que ni `meet.jit.si` ni el nombre de sala aparecen en el árbol de widgets | ✅ |
+| RF-37 | Estado de videollamada | F12 | `PROGRAMADA → EN_CURSO → FINALIZADA`, con `FALLIDA` como salida desde las dos primeras. La tabla del cliente es la misma de `video.service.ts`: un salto imposible ni siquiera se pide, en vez de gastar un 409. Entrar marca `EN_CURSO` **antes** de abrir la sala — al revés, la app pasa a segundo plano y el cambio queda a medias. Cerrar la consulta es del médico | 9 pruebas de transiciones + 5 de pantalla | ✅ |
 
 **RF-28..RF-37 — ⛔ sin backend.** Las tres áreas tienen tabla y entidad
 TypeORM, pero cero endpoints: no hay controller, service ni módulo registrado
@@ -89,15 +95,15 @@ tomarla al front en solitario.
 | RNF-08 | Notificaciones asíncronas | F10 | El backend las emite fuera de la transacción de reserva y las agenda por cron. El front las consume; no hay push, y está declarado | ✅ |
 | RNF-09 | Healthcheck | F14 | `/healthz` responde `ok` y devuelve 503 si falta el build. `HEALTHCHECK` del contenedor verificado en `healthy` — usaba `localhost`, que resuelve a ::1, y quedaba `unhealthy` para siempre | ✅ |
 | RNF-10 | Concurrencia sin duplicar | F08 | El backend lo garantiza (bloqueo pesimista + índice único, verificado en F00 con carrera real). El front refresca la grilla y avisa; **nunca reintenta en silencio** | ✅ |
-| RNF-11 | Arquitectura modular | F01,F04,F05,F13,F16 | Siete modulos con las tres capas. **La deuda de imports cruzados bajo de 7 archivos a 3**: `dioClienteProvider` y `secureStoreProvider` subieron a `core/network/infra_provider.dart`, desbloqueado invirtiendo el aviso de sesion expirada — `core` lo emite y `auth` lo escucha. Los 3 que quedan necesitan `sesionActualProvider`, que es estado de sesion y no infraestructura. `test/arquitectura_test.dart` lo verifica y deriva los features del disco | ⚠️ |
+| RNF-11 | Arquitectura modular | F01,F04,F05,F13,F16 | Nueve modulos con las tres capas. **La deuda de imports cruzados bajo de 7 archivos a 3**: `dioClienteProvider` y `secureStoreProvider` subieron a `core/network/infra_provider.dart`, desbloqueado invirtiendo el aviso de sesion expirada — `core` lo emite y `auth` lo escucha. Los 3 que quedan necesitan `sesionActualProvider`, que es estado de sesion y no infraestructura. `test/arquitectura_test.dart` lo verifica y deriva los features del disco | ⚠️ |
 | RNF-12 | Migraciones versionadas | — | Back | ⬜ |
 | RNF-13 | Tipado estricto + linter | F01 | `analysis_options.yaml` (strict-casts/inference/raw-types, custom_lint, `avoid_print: error`) · `flutter analyze --fatal-infos` en cero | ✅ |
-| RNF-14 | Pruebas por modulo | todas,F13,F15 | **82.7 %** de linea, 505 pruebas (501 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. Ver `docs/HARDENING.md` | ✅ |
-| RNF-15 | Swagger | F00 | `docs/openapi.json` — 29 endpoints, extraído de `/docs-json` | ✅ |
+| RNF-14 | Pruebas por modulo | todas,F13,F15,F16 | **83.4 %** de linea, 618 pruebas (614 mas 4 goldens que solo corren en Linux), excluyendo codigo generado. En F16 se cerraron las dos deudas declaradas en la revision de F10: `bandeja_screen.dart` paso de 1/87 lineas a cubierta, y las capas `api`/`dto` —que los dobles de prueba dejaban sin ejecutar— entraron a `contrato_api_test.dart`, donde la ruta literal y el `fromJson` se ejercen de verdad. Ver `docs/HARDENING.md` | ✅ |
+| RNF-15 | Swagger | F00,F16 | `docs/openapi.json` — **38 endpoints**, extraído de `/docs-json` del servidor real. Eran 29 hasta que el backend agregó notificaciones, chat y video | ✅ |
 | RNF-16 | Errores claros y uniformes | F03 | Jerarquía sellada `Failure` + `FailureMapper`; 21 pruebas de mapeo HTTP→dominio | ✅ |
-| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **505 pruebas, cobertura 82.7 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
+| RNF-17 | Docker | F14 | `docker build --target verify` termina en 0: **618 pruebas, cobertura 83.4 %** dentro del contenedor. Targets `verify`, `goldens` y `web`; `artifacts`/`export` eliminados porque nunca compilaron (sin SDK de Android). El APK se compila en el job `apk` del CI | ✅ |
 | RNF-18 | **UTC ↔ America/Santo_Domingo** | F13 | `core/time/app_time.dart` es el único borde de conversión; desfase fijo −4 h para coincidir con el backend (ADR-005). `test/core/time/disciplina_utc_test.dart` recorre `lib/` y falla ante `DateTime.now()` o formateo fuera de `AppTime` — 24 pruebas, comprobada falsificable | ✅ |
-| RNF-19 | Escalable a nuevos proveedores | F12 | Interfaz `VideoProvider` | ⬜ |
+| RNF-19 | Escalable a nuevos proveedores | F12 | El proveedor lo elige el **backend** (`VIDEO_BASE_URL`, hoy Jitsi público) y viaja en el campo `proveedor` de la respuesta; el front no lo cablea en ninguna parte. Del lado cliente lo que se abstrae es la apertura: `LanzadorSala`, una interfaz con una implementación sobre `url_launcher`. Cambiar de proveedor es configuración del servidor, no un despliegue de la app | ⚠️ el punto de extensión real está en el back; el front solo no puede garantizarlo |
 
 Cinco RNF son del backend, no del front. Están listados igual porque el jurado
 va a preguntar por los 19 y la respuesta correcta es "ese se cumple del lado

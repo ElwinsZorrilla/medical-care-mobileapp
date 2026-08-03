@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/domain/cita_estado.dart';
 import '../../../../core/domain/medico.dart';
+import '../../../../core/domain/modalidad.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -69,6 +70,12 @@ class _MisCitasScreenState extends ConsumerState<MisCitasScreen> {
         // RF-28: la puerta a la bandeja, desde la pantalla de inicio de los
         // dos roles.
         const CampanaNotificaciones(),
+        // RF-31: la puerta a los mensajes, desde la pantalla de inicio.
+        IconButton(
+          onPressed: () => context.push(Rutas.conversaciones),
+          icon: const Icon(Icons.forum_outlined),
+          tooltip: 'Mensajes',
+        ),
         // RF-16, RF-17: la puerta a las franjas del medico. Estaba registrada
         // como ruta y ninguna linea de lib/ navegaba a ella.
         if (widget.agenda)
@@ -337,6 +344,18 @@ class _TarjetaCita extends ConsumerWidget {
               cita.motivoConsulta!.isNotEmpty) ...[
             SizedBox(height: context.density.paddingTarjeta),
             DataField(label: 'Motivo', value: cita.motivoConsulta!),
+          ],
+
+          // RF-35, RF-36 — la puerta a la sala. Solo en citas virtuales que
+          // todavía pueden ocurrir: crear una sala para una cita presencial
+          // devuelve 409, y para una cancelada también.
+          if (cita.modalidad == ModalidadCita.virtual && cita.esCancelable) ...[
+            SizedBox(height: context.density.paddingTarjeta),
+            AppButton(
+              label: 'Consulta virtual',
+              expandido: false,
+              onPressed: () => context.push(Rutas.salaDe(cita.id)),
+            ),
           ],
 
           // RF-25 — solo en la agenda del médico y sobre una cita que todavía

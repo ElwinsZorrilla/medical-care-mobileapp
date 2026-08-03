@@ -9,6 +9,9 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/registro_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/busqueda/presentation/screens/busqueda_screen.dart';
+import '../../features/chat/presentation/screens/abrir_chat_screen.dart';
+import '../../features/chat/presentation/screens/chat_screen.dart';
+import '../../features/chat/presentation/screens/conversaciones_screen.dart';
 import '../../features/citas/presentation/screens/mis_citas_screen.dart';
 import '../../features/citas/presentation/screens/reserva_screen.dart';
 import '../../features/historial/presentation/screens/historial_screen.dart';
@@ -16,6 +19,7 @@ import '../../features/historial/presentation/screens/registro_consulta_screen.d
 import '../../features/notificaciones/presentation/screens/bandeja_screen.dart';
 import '../../features/perfil/presentation/screens/edicion_perfil_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
+import '../../features/video/presentation/screens/sala_screen.dart';
 import '../domain/tipo_usuario.dart';
 
 part 'app_router.g.dart';
@@ -123,6 +127,44 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const HistorialScreen(),
       ),
       GoRoute(
+        path: Rutas.conversaciones,
+        name: 'conversaciones',
+        builder: (context, state) => const ConversacionesScreen(),
+      ),
+      GoRoute(
+        // Va antes que `chat`: tiene tres segmentos, no choca, pero se lee
+        // mejor junto a la ruta que reemplaza.
+        path: Rutas.abrirChat,
+        name: 'abrirChat',
+        builder: (context, state) => AbrirChatScreen(
+          idMedico: int.parse(state.pathParameters['idMedico']!),
+        ),
+      ),
+      GoRoute(
+        path: Rutas.chat,
+        name: 'chat',
+        builder: (context, state) => ChatScreen(
+          idConversacion: int.parse(state.pathParameters['idConversacion']!),
+          // El id del usuario lo inyecta el router: leerlo dentro de `chat`
+          // obligaría a importar de `auth`, y un feature no importa de otro
+          // (rubro 3.3). Acá ya se sabe que hay sesión — el redirect de
+          // arriba no deja llegar a esta ruta sin ella.
+          idUsuario: ref.read(sesionActualProvider).usuario!.id,
+        ),
+      ),
+      GoRoute(
+        path: Rutas.sala,
+        name: 'sala',
+        builder: (context, state) => SalaScreen(
+          idCita: int.parse(state.pathParameters['idCita']!),
+          // El rol lo inyecta el router por lo mismo que el id de usuario en
+          // `chat`: leerlo dentro de `video` cruzaria features.
+          esMedico:
+              ref.read(sesionActualProvider).usuario?.tipo ==
+              TipoUsuario.medico,
+        ),
+      ),
+      GoRoute(
         path: Rutas.notificaciones,
         name: 'notificaciones',
         builder: (context, state) => const BandejaScreen(),
@@ -169,6 +211,29 @@ abstract final class Rutas {
 
   /// Crear o editar el perfil propio — RF-10. Tambien comun a los dos roles.
   static const String edicionPerfil = '/perfil/editar';
+
+  /// Mensajes — RF-31. Comun a los dos roles.
+  static const String conversaciones = '/mensajes';
+
+  /// Una conversacion concreta — RF-31 a RF-34.
+  static const String chat = '/mensajes/:idConversacion';
+
+  static String chatCon(int idConversacion) => '/mensajes/$idConversacion';
+
+  /// Escribirle a un medico sin saber si ya hay hilo. La pantalla detras
+  /// resuelve el id y se reemplaza a si misma.
+  static const String abrirChat = '/mensajes/medico/:idMedico';
+
+  static String abrirChatCon(int idMedico) => '/mensajes/medico/$idMedico';
+
+  /// Sala de video de una cita — RF-35, RF-36, RF-37.
+  ///
+  /// No cuelga de `/agenda` ni de `/mis-citas`: entran los dos participantes,
+  /// asi que el guard por rol la dejaria fuera a uno de ellos. El backend
+  /// filtra por token, que es la verificacion que importa.
+  static const String sala = '/consulta/:idCita/sala';
+
+  static String salaDe(int idCita) => '/consulta/$idCita/sala';
 
   /// Bandeja de notificaciones — RF-28. Comun a los dos roles; se llega desde
   /// la campana de la barra.

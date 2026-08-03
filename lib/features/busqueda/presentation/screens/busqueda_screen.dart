@@ -295,6 +295,14 @@ class _TarjetaMedico extends StatelessWidget {
               style: text.data,
             ),
           ],
+          // RF-31: escribirle sin reservar. Va a una ruta y no al provider de
+          // `chat` porque un feature no importa de otro (rubro 3.3); la
+          // pantalla detrás resuelve el hilo.
+          IconButton(
+            onPressed: () => context.push(Rutas.abrirChatCon(medico.idMedico)),
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Escribir a ${medico.nombreCompleto}',
+          ),
         ],
       ),
     );

@@ -61,17 +61,23 @@ el APK **no** se compila en el contenedor y cómo se regeneran los goldens.
 
 ## Estado
 
-De los **37 requerimientos funcionales**: 26 completos, 4 parciales con su
-razón escrita, y **7 sin backend en el front todavía**.
+De los **37 requerimientos funcionales**: 35 completos y 2 parciales con su
+razón escrita.
 
-Los 7 restantes (RF-31..RF-37 — chat y videollamada) no son trabajo
-pendiente del front: las tablas existen del lado servidor pero **no hay
-endpoints**, ni transporte de tiempo real, ni proveedor de push o de video.
-Verificado contra el Swagger real, no supuesto. Hay un pull request abierto en
-el repositorio del backend que los implementa; hasta que se fusione, esas tres
-áreas no tienen contra qué construirse.
+Los 10 que en F00 quedaron sin backend —notificaciones, chat y videollamada—
+ya tienen API y están construidos contra el servidor real, sin un solo mock de
+endpoint. El Swagger pasó de 29 rutas a **38**.
 
-De los **19 no funcionales**: 14 completos, 1 parcial, 4 que dependen del
+Los 2 parciales son huecos del lado servidor, no trabajo pendiente del front:
+
+- **RF-05** (logout invalida el refresh): no existe `/auth/logout` ni
+  revocación. El front borra el token localmente y nada más.
+- **RF-34** (adjuntar archivos): el campo `urlAdjunto` viaja y se pinta, pero
+  **no hay ningún endpoint de subida** en todo `back/src/`. Se muestra lo que
+  ya exista del lado servidor; no se agregó un selector de archivos porque un
+  botón que no puede subir nada es un botón que miente.
+
+De los **19 no funcionales**: 14 completos, 2 parciales, 3 que dependen del
 backend.
 
 La matriz completa —qué cubre cada requerimiento, con qué archivo y con qué
@@ -80,8 +86,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 82.7 % (excluyendo código generado) |
-| Pruebas | 505 (501 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 83.4 % (excluyendo código generado) |
+| Pruebas | 618 (614 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

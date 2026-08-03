@@ -50,8 +50,13 @@ lib/
             └── widgets/
 ```
 
-Dominios: `auth` · `perfil` · `especialidades` · `agenda` · `citas` ·
-`historial` · `notificaciones` · `chat` · `video`
+Dominios, tal como estan en el disco: `agenda` · `auth` · `busqueda` ·
+`chat` · `citas` · `historial` · `notificaciones` · `perfil` · `video`.
+
+`test/arquitectura_test.dart` los deriva de `lib/features/` en vez de
+llevarlos escritos a mano. La lista escrita se desactualizo una vez —le
+faltaba `notificaciones`— y con eso la guarda quedo ciega justo sobre el
+modulo nuevo.
 
 **Regla de importación, verificada en el gate:**
 

@@ -117,7 +117,23 @@ los cinco. La acción "confirmar cita" no se construye en F08; RF-23 queda
 
 ---
 
-## 5 · Chat, notificaciones y video: tablas sin API
+## 5 · Chat, notificaciones y video: tablas sin API — **RESUELTO**
+
+> **Cerrado el 2026-08-02.** El backend implemento los tres modulos: 38 rutas
+> en el spec contra las 29 de F00. F10, F11 y F12 se construyeron contra el
+> servidor real, sin un solo mock de endpoint. Lo de abajo queda como estaba
+> escrito el 2026-07-30, porque el registro de lo que se decidio con la
+> informacion de entonces vale mas que un archivo reescrito para que parezca
+> que nunca hubo problema.
+>
+> De las dos opciones planteadas no se tomo ninguna: aparecio una tercera —el
+> equipo del backend reabrio el proyecto y lo implemento— que en su momento
+> estaba descartada con evidencia (cero PRs abiertos, ultimo commit de
+> cierre). **Declararlo en vez de mockearlo fue lo que permitio que se
+> resolviera de verdad**: un mock hubiera dado diez filas en verde y nadie
+> habria pedido el backend.
+>
+> Sobrevive un hueco, mas chico y mas concreto: ver el punto 9.
 
 Las tres tienen entidad TypeORM y tabla creada por la migración
 `InitialSchema`, pero **ni controller, ni service, ni módulo**. No están en
@@ -206,3 +222,25 @@ tiene backend.
 filtro de especialidad**. Filtrar por nombre en cliente sobre la página actual
 sería peor que no tenerlo: da resultados que dependen de en qué página estás.
 Mejor no ofrecerlo hasta que exista.
+
+---
+
+## 9 · No hay endpoint para subir archivos
+
+`MensajeResponseDto` tiene `urlAdjunto` y `EnviarMensajeDto` lo acepta, pero
+**no existe ninguna ruta que reciba un archivo** en todo `back/src/`: ni
+`multer`, ni `FileInterceptor`, ni almacenamiento configurado. El campo es una
+referencia a algo que tiene que existir ya del lado servidor.
+
+**RF-34 (adjuntar archivos) queda ⚠️.** Se cumple la mitad que hay: el
+adjunto viaja, vuelve y se pinta en la burbuja.
+
+**Mientras tanto:** el front no agrega un selector de archivos. Un boton que
+abre la galeria, deja elegir una foto y despues no puede subirla es peor que
+no tenerlo — promete algo que no ocurre y el usuario culpa a su conexion. Por
+la misma razon `file_picker` no esta en `pubspec.yaml`, con la razon anotada
+ahi mismo.
+
+**Lo que haria falta del lado servidor:** una ruta de subida que devuelva la
+URL ya guardada, y una politica de acceso — un adjunto de una conversacion
+clinica no puede quedar servido en una carpeta publica.

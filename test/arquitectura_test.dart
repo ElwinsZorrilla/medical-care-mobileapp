@@ -225,6 +225,9 @@ void main() {
       const alias = {
         'reservaCon': 'reserva',
         'registroConsultaDe': 'registroConsulta',
+        'chatCon': 'chat',
+        'abrirChatCon': 'abrirChat',
+        'salaDe': 'sala',
       };
       conPuerta.addAll(
         conPuerta.map((n) => alias[n]).whereType<String>().toList(),

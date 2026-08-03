@@ -38,6 +38,15 @@ dependencies:
   timezone: ^0.11.1
 
   cached_network_image: ^3.4.1
+  socket_io_client: ^3.1.6
+  # RF-35, RF-36 — abrir la sala de Jitsi.
+  #
+  # No hay SDK de video empotrado: el backend usa `meet.jit.si` publico, que
+  # no expone credenciales ni cliente nativo. Se delega en el navegador o en
+  # la app de Jitsi si esta instalada. Empotrar un WebView daria una consulta
+  # sin permisos de camara resueltos y con la URL de la sala —que es un
+  # secreto— viviendo dentro de la app.
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -68,8 +77,17 @@ flutter:
 
 # ── Dependencias deliberadamente ausentes ─────────────────────────────────
 #
-# socket_io_client, firebase_messaging, flutter_local_notifications y
-# file_picker NO estan aca a proposito.
+# firebase_messaging, flutter_local_notifications y file_picker NO estan aca
+# a proposito.
+#
+# `socket_io_client` SI se agrego en F11: el backend expone un gateway en el
+# namespace /chat que emite `mensaje:nuevo` y `mensaje:leido`, asi que el
+# transporte de tiempo real ya existe y RF-32 se puede cumplir de verdad en
+# vez de con sondeo.
+#
+# `file_picker` sigue fuera porque **no hay endpoint de subida**: el backend
+# acepta `urlAdjunto` como texto y nadie sirve un POST de archivos. Un
+# selector que no puede subir nada seria un boton que miente.
 #
 # F00 verifico contra el backend real que no existe transporte de tiempo
 # real, ni proveedor de push, ni de video: chat, notificaciones y video
