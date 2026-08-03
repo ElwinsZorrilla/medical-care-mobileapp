@@ -1,10 +1,12 @@
 # Contrato de API — VERIFICADO
 
-> Verificado contra el backend real el **2026-07-30**, ejecutándolo en local y
-> consultando `GET /docs-json`. El spec crudo está en [`openapi.json`](openapi.json).
+> Verificado contra el backend real el **2026-07-30** y **revisado el
+> 2026-08-02**, ejecutándolo en local y consultando `GET /docs-json`. El spec
+> crudo está en [`openapi.json`](openapi.json).
 >
 > Fuente: `RafaelEspinal0/medical-care-back` @ `main`. NestJS 11 + TypeORM +
-> PostgreSQL 16. **29 endpoints reales.**
+> PostgreSQL 16. **38 endpoints reales** — eran 29 en F00, hasta que el
+> backend implementó notificaciones, chat y video (§9).
 >
 > Todo lo marcado abajo se confirmó ejecutando peticiones, no leyendo código.
 > Los huecos del backend están en [`BACKEND_ISSUES.md`](BACKEND_ISSUES.md).
@@ -294,20 +296,86 @@ que no hay 403 que probar: el acceso cruzado simplemente no se puede expresar.
 
 ---
 
-## 9. Lo que **no existe** en el backend
+## 9. Notificaciones, chat y video — **agregados después de F00**
 
-Confirmado sobre los 29 endpoints reales y los módulos registrados en
-`app.module.ts`:
+En F00 las tres áreas tenían tabla y entidad TypeORM y **cero endpoints**: ni
+controller, ni service, ni módulo en `app.module.ts`. Se declaró así en vez de
+mockearlo. El backend los implementó y el front se construyó contra ellos el
+2026-08-02.
 
-| Requerimientos | Estado real |
+### 9.1 Notificaciones — RF-28..30
+
+| Método | Ruta | Notas |
+|---|---|---|
+| GET | `/api/notifications/me` | paginado `page`/`limit`, más nuevas primero |
+| GET | `/api/notifications/me/no-leidas` | devuelve `{ "noLeidas": n }` — **no** `sinLeer` |
+| PATCH | `/api/notifications/{id}/leida` | 404 si es de otro usuario |
+| PATCH | `/api/notifications/me/leidas` | todas de una |
+
+**No hay push.** El backend guarda y sirve; no hay proveedor configurado. Es
+una bandeja in-app y así está declarado en la interfaz.
+
+### 9.2 Chat — RF-31..34
+
+| Método | Ruta | Notas |
+|---|---|---|
+| GET | `/api/chat/conversations` | sin paginar; trae `noLeidos` por hilo |
+| POST | `/api/chat/conversations` | `{ idMedico }`. **Idempotente**: con el mismo médico devuelve el hilo existente |
+| GET | `/api/chat/conversations/{id}/messages` | **cursor**: `antesDe` + `limit` (30 por defecto, 100 máximo). Del más nuevo al más viejo |
+| POST | `/api/chat/conversations/{id}/messages` | `{ contenido, urlAdjunto? }` |
+| PATCH | `/api/chat/conversations/{id}/leidos` | RF-33 |
+
+**403** si la conversación es de otro. Ninguna ruta recibe id de usuario.
+
+**WebSocket:** Socket.IO, namespace **`/chat`** colgando de la raíz del
+servidor —no del prefijo `/api`—. El JWT va en `handshake.auth.token`, que es
+lo que el gateway lee; en la query quedaría en logs de proxy. Eventos:
+
+| Evento | Payload |
 |---|---|
-| **RF-28..30** Notificaciones | tabla `notificacion` + entidad. **Sin controller, sin service, sin módulo.** 0 endpoints. |
-| **RF-31..34** Chat | tablas `conversacion` y `mensaje` + entidades. **0 endpoints, 0 WebSocket.** |
-| **RF-35..37** Videollamada | tabla `videollamada` + entidad. **0 endpoints.** |
-| **RF-05** Logout | no hay endpoint ni revocación. |
+| `mensaje:nuevo` | `MensajeResponseDto` completo. **Se emite también al remitente** |
+| `mensaje:leido` | `{ idConversacion }` |
 
-**10 de 37 RF no tienen backend.** Las fases **F10, F11 y F12 no se pueden
-construir contra la API real.**
+**No hay endpoint de subida de archivos.** `urlAdjunto` es una referencia a
+algo que ya tiene que existir del lado servidor. Ver
+[`BACKEND_ISSUES.md` #9](BACKEND_ISSUES.md).
+
+### 9.3 Videollamada — RF-35..37
+
+| Método | Ruta | Notas |
+|---|---|---|
+| POST | `/api/appointments/{idCita}/videollamada` | crea o devuelve la existente. **Idempotente** a propósito: si cada llamada creara una sala, paciente y médico terminarían en salas distintas |
+| GET | `/api/appointments/{idCita}/videollamada` | 404 si aún no hay sala |
+| PATCH | `/api/appointments/{idCita}/videollamada/estado` | `{ estado }` |
+
+**409** si la cita es presencial o está cancelada, y también ante un salto de
+estado inválido. El mensaje del servidor es lo único que distingue los tres
+casos, así que se conserva.
+
+**Proveedor:** Jitsi Meet público (`VIDEO_BASE_URL`, por defecto
+`https://meet.jit.si`). El nombre de sala son 16 bytes aleatorios: uno
+predecible —`cita-7`— dejaría entrar a una consulta ajena probando números.
+**La `urlSala` es un secreto**, y el propio spec lo dice: *"cualquiera con
+esta URL entra a la consulta"*.
+
+**Transiciones**, solo hacia adelante:
+
+```
+PROGRAMADA ──> EN_CURSO ──> FINALIZADA
+     │             │
+     └─────────────┴──────> FALLIDA
+```
+
+Permitir retrocesos dejaría una llamada terminada volviendo a "en curso" y el
+registro de horas dejaría de significar nada. El cliente replica la tabla para
+no pedir saltos que ya se sabe que dan 409.
+
+### 9.4 Lo que sigue sin existir
+
+| Requerimiento | Estado real |
+|---|---|
+| **RF-05** Logout | no hay endpoint ni revocación de refresh |
+| **RF-34** Subir archivos | el campo viaja, pero no hay ruta que reciba un archivo |
 
 Respuestas a las preguntas abiertas de F00:
 
@@ -353,12 +421,14 @@ aguantar los dos. En `401` sin token no viene `error`.
 
 ## Salida de F00
 
-- [x] `docs/openapi.json` en el repo (29 endpoints)
+- [x] `docs/openapi.json` en el repo (29 endpoints; **38** tras la revisión
+      del 2026-08-02)
 - [x] Todos los ❓ resueltos
 - [x] Confirmado: **409** en reserva concurrente, con carrera real
 - [x] Confirmado: `?fecha=` es calendario de **Santo Domingo**, offset fijo −4
 - [x] Confirmado: refresh **rota** pero **no revoca** el anterior
-- [x] Confirmado: **no hay** realtime, push ni video del lado servidor
+- [x] Confirmado: **no hay** realtime, push ni video del lado servidor —
+      resuelto después; ver §9
 - [x] Huecos del backend documentados en `BACKEND_ISSUES.md`
 - [ ] DTOs generados en `lib/core/api/` — **va en F01**, cuando exista el
       proyecto Flutter
