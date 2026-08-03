@@ -61,24 +61,33 @@ el APK **no** se compila en el contenedor y cómo se regeneran los goldens.
 
 ## Estado
 
-De los **37 requerimientos funcionales**: 35 completos y 2 parciales con su
-razón escrita.
+De los **37 requerimientos funcionales**: 32 completos y 5 parciales con su
+razón escrita. Ninguno queda sin implementar.
 
 Los 10 que en F00 quedaron sin backend —notificaciones, chat y videollamada—
 ya tienen API y están construidos contra el servidor real, sin un solo mock de
 endpoint. El Swagger pasó de 29 rutas a **38**.
 
-Los 2 parciales son huecos del lado servidor, no trabajo pendiente del front:
+**Los 5 parciales son huecos del lado servidor**, no trabajo pendiente del
+front. En los cinco, la mitad que el backend soporta está construida y
+probada; la otra mitad no tiene contra qué construirse:
 
-- **RF-05** (logout invalida el refresh): no existe `/auth/logout` ni
-  revocación. El front borra el token localmente y nada más.
-- **RF-34** (adjuntar archivos): el campo `urlAdjunto` viaja y se pinta, pero
-  **no hay ningún endpoint de subida** en todo `back/src/`. Se muestra lo que
-  ya exista del lado servidor; no se agregó un selector de archivos porque un
-  botón que no puede subir nada es un botón que miente.
+| RF | Lo que hay | Lo que falta del servidor |
+|---|---|---|
+| RF-05 | El token se borra localmente al salir | No existe `/auth/logout` ni revocación: el refresh sigue siendo válido |
+| RF-14 | Filtro por especialidad, con debounce | `GET /doctors` no acepta `q` ni `nombre` ([#8](docs/BACKEND_ISSUES.md)) |
+| RF-17 | Desactivar una franja, con confirmación | `PATCH /desactivar` es de una sola dirección: no hay cómo reactivarla |
+| RF-23 | Los 5 estados mapeados, pintados y con golden | `CONFIRMADA` y `NO_ASISTIO` son inalcanzables: no hay endpoint de transición ([#4](docs/BACKEND_ISSUES.md)) |
+| RF-34 | El adjunto viaja, vuelve y se pinta | No hay **ninguna** ruta que reciba un archivo ([#9](docs/BACKEND_ISSUES.md)) |
 
-De los **19 no funcionales**: 14 completos, 2 parciales, 3 que dependen del
-backend.
+En RF-14 y RF-34 se decidió **no** ofrecer la mitad que no funciona: ni un
+buscador por nombre que filtre solo la página cargada, ni un selector de
+archivos que no puede subir nada. Un control que promete algo que no ocurre es
+peor que su ausencia — el usuario culpa a su conexión.
+
+De los **19 no funcionales**: 15 completos, 2 parciales y 2 que son
+responsabilidad del backend (RNF-01 cifrado de contraseñas, RNF-12 migraciones
+versionadas).
 
 La matriz completa —qué cubre cada requerimiento, con qué archivo y con qué
 prueba— está en [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md). Los huecos del
