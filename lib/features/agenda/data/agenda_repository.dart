@@ -98,6 +98,13 @@ class AgendaRepository {
   }) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 409 && mensaje409 != null) {
@@ -117,10 +124,6 @@ class AgendaRepository {
       // Día, modalidad u hora con forma inesperada: falla ruidoso en vez de
       // pintar una agenda con turnos en el día equivocado.
       return Fallo(ErrorInesperado(e.message.toString()));
-    } on FormatException {
-      return const Fallo(
-        ErrorInesperado('El servidor devolvió una fecha inválida.'),
-      );
     }
   }
 

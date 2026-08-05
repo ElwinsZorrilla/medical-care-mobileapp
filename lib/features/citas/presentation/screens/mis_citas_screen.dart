@@ -85,7 +85,11 @@ class _MisCitasScreenState extends ConsumerState<MisCitasScreen> {
             tooltip: 'Mi disponibilidad',
           ),
         IconButton(
-          onPressed: () => context.go(Rutas.perfil),
+          // `push` y no `go`: `go` **reemplaza la pila entera**. Desde el
+          // perfil no quedaba a donde volver —ni siquiera aparecia la flecha,
+          // porque `canPop` era falso— y el boton fisico de atras cerraba la
+          // app. Reportado en uso real.
+          onPressed: () => context.push(Rutas.perfil),
           icon: const Icon(Icons.person_outline),
           tooltip: 'Mi perfil',
         ),
@@ -93,7 +97,10 @@ class _MisCitasScreenState extends ConsumerState<MisCitasScreen> {
       floatingActionButton: widget.agenda
           ? null
           : FloatingActionButton.extended(
-              onPressed: () => context.go(Rutas.busqueda),
+              // Mismo caso que el perfil: buscar un medico es un desvio, no
+              // un cambio de casa. Con `go` el paciente quedaba varado en la
+              // busqueda.
+              onPressed: () => context.push(Rutas.busqueda),
               icon: const Icon(Icons.search),
               label: const Text('Buscar médico'),
             ),

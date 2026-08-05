@@ -55,6 +55,13 @@ class VideoRepository {
   Future<Result<T>> _envolver<T>(Future<T> Function() peticion) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       // 409 aca es "esa cita es presencial", "esta cancelada" o "ese salto de
       // estado no existe". `FailureMapper` ya conserva el mensaje del
@@ -66,10 +73,6 @@ class VideoRepository {
           'El servidor devolvio un estado de videollamada desconocido: '
           '${e.valor}.',
         ),
-      );
-    } on FormatException {
-      return const Fallo(
-        ErrorInesperado('El servidor devolvio una fecha invalida.'),
       );
     }
   }

@@ -28,7 +28,10 @@ echo "── analyze ───────────────────�
 flutter analyze --fatal-infos --fatal-warnings
 
 echo "── test ───────────────────────────────────────────────"
-flutter test --coverage
+# --exclude-tags servidor: las pruebas contra un backend real viven en
+# test_servidor/, que `flutter test` no recorre. Esto es el segundo cierre,
+# por si alguna aterriza bajo test/ con el tag puesto.
+flutter test --coverage --exclude-tags servidor
 
 echo "── cobertura ──────────────────────────────────────────"
 # Se lee lcov.info directo con awk en vez de usar `lcov --summary`.

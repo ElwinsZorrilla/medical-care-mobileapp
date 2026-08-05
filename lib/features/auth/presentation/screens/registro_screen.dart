@@ -85,6 +85,20 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
     });
   }
 
+  /// Vuelve al login sin apilar una segunda copia.
+  ///
+  /// Normalmente hay algo que desapilar, porque al registro se llega desde el
+  /// login con `push`. Pero a `/registro` también se puede entrar directo por
+  /// deep link: ahí no hay nada debajo y `pop` cerraría la app, que es
+  /// exactamente el defecto que se está corrigiendo.
+  void _volverAlLogin(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(Rutas.login);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -92,7 +106,7 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
     return AppScaffold(
       titulo: 'Crear cuenta',
       tituloCompacto: true,
-      leading: BackButton(onPressed: () => context.go(Rutas.login)),
+      leading: BackButton(onPressed: () => _volverAlLogin(context)),
       body: ListView(
         padding: const EdgeInsets.all(Space.lg),
         children: [
@@ -180,7 +194,7 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
           AppButton(
             label: 'Ya tengo cuenta',
             variant: AppButtonVariant.secundaria,
-            onPressed: _enviando ? null : () => context.go(Rutas.login),
+            onPressed: _enviando ? null : () => _volverAlLogin(context),
           ),
         ],
       ),

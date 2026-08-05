@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'decimal_json.dart';
+
 part 'medico_dto.freezed.dart';
 part 'medico_dto.g.dart';
 
@@ -36,7 +38,9 @@ abstract class MedicoDto with _$MedicoDto {
     @Default(<EspecialidadDto>[]) List<EspecialidadDto> especialidades,
     String? biografia,
     int? aniosExperiencia,
-    num? tarifaConsulta,
+    // Llega como **cadena**, no como número: la columna es `Decimal` y el
+    // backend la serializa con `.toString()`. Ver `decimal_json.dart`.
+    @DecimalJson() double? tarifaConsulta,
   }) = _MedicoDto;
 
   factory MedicoDto.fromJson(Map<String, dynamic> json) =>

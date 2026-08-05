@@ -47,6 +47,36 @@ error de formulario. Necesita su propia rama.
 `{"message":"Unauthorized","statusCode":401}`. El parser del `Failure` no puede
 exigir `error`.
 
+### Los `Decimal` viajan como cadena, y solo de vuelta
+
+**El contrato es asimétrico, y es correcto que lo sea:**
+
+| | Tipo | Ejemplo |
+| - | - | - |
+| `CreateDoctorDto.tarifaConsulta` (envío) | `number` | `1500` |
+| `UpdateDoctorDto.tarifaConsulta` (envío) | `number` | `1500` |
+| `DoctorResponseDto.tarifaConsulta` (respuesta) | `string \| null` | `"1500.00"` |
+
+`doctors.service.ts:39` hace `dto.tarifaConsulta?.toString()` antes de
+guardar: la columna es `Decimal` y un `double` de JavaScript no representa
+todos los decimales sin error de redondeo. Para un precio eso no es
+aceptable, así que vuelve como texto.
+
+**El spec no sirve para verificar esto.** El plugin de Swagger de NestJS emite
+`{"type": "object", "nullable": true}` para todo campo que no logra inferir —
+31 campos en `openapi.json`, entre ellos este. Leerlo ahí da `object`, que no
+dice nada. El tipo real está en `back/src/**/dto/*-response.dto.ts`.
+
+Costó un cierre de la app: el DTO del front declaraba `num?` en la respuesta y
+`json['tarifaConsulta'] as num?` reventaba. No se veía porque ningún médico
+tenía tarifa —`null` encaja en cualquier tipo— y el primero que guardó una
+tumbó también la búsqueda entera para todos los pacientes, porque basta un
+médico con tarifa para que falle el parseo de la página completa.
+
+En el front lo lee `core/data/decimal_json.dart`, aplicado **solo** al campo
+de respuesta. Lo cubre `test_servidor/servidor_real_test.dart`, que ejerce
+esto contra el backend levantado en vez de fabricar el JSON.
+
 ---
 
 ## 2. Zona horaria — RNF-18 · **resuelto**

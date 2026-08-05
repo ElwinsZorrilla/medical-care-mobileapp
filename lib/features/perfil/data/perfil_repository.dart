@@ -196,6 +196,13 @@ class PerfilRepository {
   Future<Result<T?>> _envolverOpcional<T>(Future<T> Function() peticion) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return const Ok(null);
       return Fallo(FailureMapper.desdeDio(e));
@@ -211,6 +218,13 @@ class PerfilRepository {
   }) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 409 && mensaje409 != null) {

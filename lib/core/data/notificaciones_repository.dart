@@ -57,6 +57,13 @@ class NotificacionesRepository {
   Future<Result<T>> _envolver<T>(Future<T> Function() peticion) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       // 404 al marcar leida significa "esa notificacion no es tuya": el
       // backend filtra por token y no distingue inexistente de ajena.
@@ -68,10 +75,6 @@ class NotificacionesRepository {
       // Tipo desconocido: falla ruidoso en vez de pintar un icono generico
       // donde deberia decir que se cancelo una cita.
       return Fallo(ErrorInesperado(e.message.toString()));
-    } on FormatException {
-      return const Fallo(
-        ErrorInesperado('El servidor devolvio una fecha invalida.'),
-      );
     }
   }
 }

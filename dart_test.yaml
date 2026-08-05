@@ -1,15 +1,8 @@
 # Tags declarados del proyecto.
+
+# Para correrlas contra el backend levantado hace falta anular la exclusion,
+# no solo pedir el tag: `--tags` no gana sobre `exclude_tags`. Este preset lo
+# hace en un comando:
 #
-# Sin esto, flutter test avisa "A tag was used that wasn't specified in
-# dart_test.yaml" en cada corrida de goldens. El aviso no rompe la prueba,
-# pero ensucia la salida del gate y entrena al equipo a ignorar warnings.
-
-tags:
-  golden:
-    description: >-
-      Comparaciones de imagen del sistema de diseño. Alchemist las genera con
-      el render de texto bloqueado, así que comparan layout —posición, tamaño,
-      color— y no dependen del motor de fuentes de cada máquina.
-
-      Para regenerar la línea base tras un cambio deliberado de diseño:
-        flutter test --update-goldens test/core/widgets/
+#   cd back && npm run start:dev
+#   cd front && flutter test -P servidor

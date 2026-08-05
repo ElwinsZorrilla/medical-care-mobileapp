@@ -79,6 +79,13 @@ class ChatRepository {
   Future<Result<T>> _envolver<T>(Future<T> Function() peticion) async {
     try {
       return Ok(await peticion());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       // 403 acá significa "esa conversacion no es tuya". El backend la filtra
       // por token, asi que el acceso cruzado ni siquiera se puede expresar.
@@ -86,10 +93,6 @@ class ChatRepository {
         return const Fallo(Prohibido('Esa conversacion no es tuya.'));
       }
       return Fallo(FailureMapper.desdeDio(e));
-    } on FormatException {
-      return const Fallo(
-        ErrorInesperado('El servidor devolvio una fecha invalida.'),
-      );
     }
   }
 }

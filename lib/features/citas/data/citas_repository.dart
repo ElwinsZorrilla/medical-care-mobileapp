@@ -42,6 +42,13 @@ class CitasRepository {
         ),
       );
       return Ok(_aEntidad(dto));
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       return Fallo(_falloDeReserva(e));
     } on ArgumentError catch (e) {
@@ -93,6 +100,13 @@ class CitasRepository {
   }) async {
     try {
       return Ok(_aEntidad(await _api.cancelar(idCita, motivo)));
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 403) {
@@ -141,6 +155,13 @@ class CitasRepository {
           limite: dto.limit,
         ),
       );
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       return Fallo(FailureMapper.desdeDio(e));
     } on ArgumentError catch (e) {
@@ -148,10 +169,6 @@ class CitasRepository {
       // cita cancelada como pendiente haría que alguien se presente a una
       // consulta que no existe.
       return Fallo(ErrorInesperado(e.message.toString()));
-    } on FormatException {
-      return const Fallo(
-        ErrorInesperado('El servidor devolvió una fecha inválida.'),
-      );
     }
   }
 

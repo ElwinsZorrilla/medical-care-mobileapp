@@ -105,3 +105,36 @@ final class ErrorServidor extends Failure {
 final class ErrorInesperado extends Failure {
   const ErrorInesperado([super.mensaje = 'Algo salió mal. Intenta de nuevo.']);
 }
+
+/// El servidor respondió bien pero con **otra forma** de la declarada.
+///
+/// Un campo que llega como cadena donde el DTO dice número, una fecha que no
+/// parsea, un objeto donde se esperaba una lista. La petición no falló: falló
+/// el acuerdo sobre cómo se ven los datos.
+///
+/// Existe como tipo aparte de [ErrorInesperado] por dos razones concretas:
+///
+/// 1. **`ErrorInesperado` es el cajón de "no sé qué pasó".** Acá sí se sabe:
+///    la app y el servidor no coinciden. Meterlo en el mismo cajón hace que
+///    la única señal de una ruptura de contrato sea indistinguible del ruido.
+/// 2. **El switch de `PoliticaReintento` es exhaustivo.** Al agregar este
+///    tipo, el compilador obliga a decidir si se reintenta — y la respuesta
+///    es que no: reintentar diez veces una respuesta con la forma equivocada
+///    da diez veces la forma equivocada, con 38 segundos de espera de regalo.
+///
+/// Nació de un crash real: `tarifaConsulta` llega como cadena porque la
+/// columna es `Decimal`, el DTO decía `num?`, y el `as num?` tumbó la app en
+/// vez de mostrar un error. Peor: el `Result<T>` prometía que ningún camino
+/// lanza, y esta excepción se colaba por debajo de esa promesa.
+final class ContratoRoto extends Failure {
+  const ContratoRoto(this.detalle)
+    : super('El servidor respondió algo que la app no supo leer.');
+
+  /// Qué no encajó. **No se muestra en pantalla**: puede contener el valor
+  /// del campo, y un campo cualquiera de esta app puede ser una cédula o un
+  /// diagnóstico (RNF-06).
+  final String detalle;
+
+  @override
+  String toString() => 'ContratoRoto($detalle)';
+}

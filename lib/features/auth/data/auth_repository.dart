@@ -63,6 +63,13 @@ class AuthRepository {
     try {
       final dto = await _api.yo();
       return Ok(_aEntidad(dto));
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       // 401 acá significa que ni el access ni el refresh sirven: el
       // interceptor ya lo intentó. Se limpia y se arranca como anónimo, sin
@@ -107,6 +114,13 @@ class AuthRepository {
       // decidir a qué pantalla entra.
       final dto = await _api.yo();
       return Ok(_aEntidad(dto));
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 401 && mensaje401 != null) {

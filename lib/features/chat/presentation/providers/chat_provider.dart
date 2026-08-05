@@ -22,17 +22,43 @@ ChatRepository chatRepository(Ref ref) =>
 /// mensajes que llegan mientras se navega.
 ///
 /// Se cierra cuando el provider se destruye, que es al cerrar sesion.
+///
+/// **Ni falla ni se cuelga: devuelve `null` si no se pudo abrir.**
+///
+/// La lista de conversaciones y cada hilo lo esperan antes de pedir por REST,
+/// para que un mensaje que llegue durante la carga no se pierda entre que se
+/// pide y se engancha el oyente. Ese orden es correcto, pero deja al chat
+/// entero colgando de este provider: si quedara en error o sin resolver, el
+/// usuario no veria un solo mensaje **teniendo el REST sano al lado**.
+///
+/// Fue el modo de fallo reportado en uso real —el medico abria mensajes y no
+/// habia nada—, con el backend devolviendo la conversacion y el mensaje sin
+/// problema. Por eso las dos garantias van aca y no en cada consumidor:
+///
+/// - **No lanza.** Cualquier excepcion se traduce en `null`.
+/// - **Termina.** El keystore de Android puede quedarse esperando sin error;
+///   3 s es de sobra para leer una clave local y no se nota al abrir.
+///
+/// Sin socket el chat sigue andando por REST. Lo unico que se pierde es que
+/// los mensajes lleguen solos, y eso lo cubre volver a entrar.
 @Riverpod(keepAlive: true)
 Future<ChatSocket?> chatSocket(Ref ref) async {
-  final token = await ref.watch(secureStoreProvider).leerAccessToken();
-  // Sin sesion no hay socket: el gateway rechaza el handshake sin token y
-  // reintentaria en bucle.
-  if (token == null || token.isEmpty) return null;
+  try {
+    final token = await ref
+        .watch(secureStoreProvider)
+        .leerAccessToken()
+        .timeout(const Duration(seconds: 3));
+    // Sin sesion no hay socket: el gateway rechaza el handshake sin token y
+    // reintentaria en bucle.
+    if (token == null || token.isEmpty) return null;
 
-  final socket = ChatSocket(urlBase: _origen(Env.apiBaseUrl), token: token)
-    ..conectar();
-  ref.onDispose(socket.cerrar);
-  return socket;
+    final socket = ChatSocket(urlBase: _origen(Env.apiBaseUrl), token: token)
+      ..conectar();
+    ref.onDispose(socket.cerrar);
+    return socket;
+  } on Object {
+    return null;
+  }
 }
 
 /// Quita el sufijo `/api`: el namespace del socket cuelga de la raiz del
@@ -53,6 +79,10 @@ class Conversaciones extends _$Conversaciones {
   Future<List<Conversacion>> build() async {
     // Un mensaje nuevo cambia el contador de no leidos de su hilo: sin esto,
     // la lista se quedaria con el numero viejo hasta salir y volver.
+    //
+    // Se engancha **antes** de pedir: un mensaje que llegue mientras carga la
+    // lista se perderia si el oyente se atara despues. Esperar aca es seguro
+    // porque `chatSocket` no lanza ni se cuelga — ver su documentacion.
     final socket = await ref.watch(chatSocketProvider.future);
     if (socket != null) {
       final sub = socket.mensajes.listen((_) => ref.invalidateSelf());
@@ -124,7 +154,9 @@ class Hilo extends _$Hilo {
 
   @override
   Future<HiloState> build(int idConversacion, int idUsuario) async {
-    // RF-32 — lo que llega sin pedirlo.
+    // RF-32 — lo que llega sin pedirlo. Igual que en `Conversaciones`: se
+    // engancha antes de pedir, y esperar es seguro porque `chatSocket` no
+    // lanza ni se cuelga.
     final socket = await ref.watch(chatSocketProvider.future);
     if (socket != null) {
       final nuevos = socket.mensajes

@@ -4,7 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medicare/core/error/failure.dart';
+import 'package:medicare/core/network/infra_provider.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
+import 'package:medicare/core/storage/secure_store.dart';
 import 'package:medicare/core/time/app_time.dart';
 import 'package:medicare/features/chat/data/chat_api.dart';
 import 'package:medicare/features/chat/data/chat_dto.dart';
@@ -589,9 +591,128 @@ void main() {
       final api = _FechaRota();
       final r = await ChatRepository(api).conversaciones();
 
-      expect(r.failureONull, isA<ErrorInesperado>());
+      expect(r.failureONull, isA<ContratoRoto>());
     });
   });
+
+  group('el socket no puede secuestrar al chat', () {
+    // Reportado en uso real: el medico abria mensajes y no veia nada, con el
+    // backend devolviendo la conversacion y el mensaje sin problema
+    // —verificado contra el servidor levantado, no deducido—.
+    //
+    // La lista y cada hilo **esperan** al socket antes de pedir por REST, y
+    // ese orden es el correcto: enganchar el oyente despues de pedir perderia
+    // los mensajes que lleguen en el medio. Lo que estaba mal era que ese
+    // await no tuviera piso. Las garantias viven en `chatSocket`, asi que es
+    // ahi donde se prueban.
+
+    test('devuelve null si el almacen seguro revienta', () async {
+      // Pasa en Android cuando el keystore no esta disponible.
+      final c = ProviderContainer(
+        retry: PoliticaReintento.decidir,
+        overrides: [secureStoreProvider.overrideWithValue(_StoreQueRevienta())],
+      );
+      addTearDown(c.dispose);
+
+      expect(await c.read(chatSocketProvider.future), isNull);
+    });
+
+    test('devuelve null si el almacen seguro se cuelga', () async {
+      // El modo de fallo peor: no da error, se queda esperando. Sin el
+      // timeout, el chat se quedaba en skeleton para siempre.
+      final c = ProviderContainer(
+        retry: PoliticaReintento.decidir,
+        overrides: [secureStoreProvider.overrideWithValue(_StoreColgado())],
+      );
+      addTearDown(c.dispose);
+
+      expect(
+        await c
+            .read(chatSocketProvider.future)
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw StateError('el provider nunca resolvio'),
+            ),
+        isNull,
+      );
+    });
+
+    test('sin token no se abre el socket', () async {
+      final c = ProviderContainer(
+        retry: PoliticaReintento.decidir,
+        overrides: [secureStoreProvider.overrideWithValue(_StoreVacio())],
+      );
+      addTearDown(c.dispose);
+
+      expect(await c.read(chatSocketProvider.future), isNull);
+    });
+
+    test('sin socket, la lista carga igual', () async {
+      final c = contenedor(_ApiFalsa());
+
+      expect(await c.read(conversacionesProvider.future), isNotEmpty);
+    });
+
+    test('sin socket, el hilo carga igual', () async {
+      final c = contenedor(_ApiFalsa());
+
+      expect((await c.read(hiloProvider(1, 7).future)).mensajes, isNotEmpty);
+    });
+  });
+}
+
+/// Almacen que nunca responde. Peor que fallar: no hay error que atrapar.
+class _StoreColgado implements SecureStore {
+  @override
+  Future<String?> leerAccessToken() => Completer<String?>().future;
+
+  @override
+  Future<String?> leerRefreshToken() => Completer<String?>().future;
+
+  @override
+  Future<void> guardarTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) => Completer<void>().future;
+
+  @override
+  Future<void> limpiar() => Completer<void>().future;
+}
+
+/// Sin sesion guardada.
+class _StoreVacio implements SecureStore {
+  @override
+  Future<String?> leerAccessToken() async => null;
+
+  @override
+  Future<String?> leerRefreshToken() async => null;
+
+  @override
+  Future<void> guardarTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {}
+
+  @override
+  Future<void> limpiar() async {}
+}
+
+/// Almacen seguro inaccesible — pasa en Android cuando el keystore falla.
+class _StoreQueRevienta implements SecureStore {
+  @override
+  Future<String?> leerAccessToken() async => throw StateError('keystore');
+
+  @override
+  Future<String?> leerRefreshToken() async => throw StateError('keystore');
+
+  @override
+  Future<void> guardarTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async => throw StateError('keystore');
+
+  @override
+  Future<void> limpiar() async => throw StateError('keystore');
 }
 
 /// El backend devolviendo algo que no es una fecha.

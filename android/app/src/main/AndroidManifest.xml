@@ -1,7 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      enableOnBackInvokedCallback: gesto de atras predictivo de Android 13+.
+      Sin esto el sistema avisa en cada arranque ("OnBackInvokedCallback is
+      not enabled") y el gesto no muestra la vista previa de a donde se
+      vuelve. Flutter lo soporta desde 3.14 y go_router lo respeta.
+    -->
     <application
         android:label="medicare"
         android:name="${applicationName}"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

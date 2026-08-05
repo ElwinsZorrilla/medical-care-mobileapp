@@ -21,6 +21,13 @@ class BusquedaRepository {
     try {
       final dtos = await _api.especialidades();
       return Ok(dtos.map(_aEspecialidad).toList());
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       return Fallo(FailureMapper.desdeDio(e));
     }
@@ -48,6 +55,13 @@ class BusquedaRepository {
           limite: dto.limit,
         ),
       );
+    } on TypeError catch (e) {
+      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
+      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
+      return Fallo(ContratoRoto('$e'));
+    } on FormatException catch (e) {
+      // Fecha, numero o `Decimal` ilegible.
+      return Fallo(ContratoRoto('$e'));
     } on DioException catch (e) {
       return Fallo(FailureMapper.desdeDio(e));
     } on ArgumentError catch (e) {

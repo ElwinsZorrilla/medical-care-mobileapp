@@ -183,6 +183,50 @@ void main() {
   /// conjunto. Esto lo hace por nosotros: una pantalla sin puerta de entrada es
   /// codigo muerto con prueba de widget, que es la forma mas cara de codigo
   /// muerto — parece cubierto.
+  group('rubro 3.6 — de toda ruta se puede volver', () {
+    /// Rutas a las que `context.go` es correcto.
+    ///
+    /// `go` **reemplaza la pila entera**: despues de un `go` no hay nada que
+    /// desapilar, no aparece la flecha de atras —`canPop` es falso— y el
+    /// boton fisico de Android cierra la app. Solo es correcto cuando la
+    /// intencion es justamente esa, que no haya vuelta:
+    const cambiosDeCasa = {
+      // Tras autenticarse. Volver al login desde aca seria un bug.
+      'misCitas', 'agenda', 'deInicioPara',
+      // Tras cerrar sesion o expirar. Volver a la sesion vieja no existe.
+      'login',
+      'splash',
+    };
+
+    test('nadie usa go() para un desvio del que hay que volver', () {
+      // Reportado en uso real: "le doy back y se cierra la aplicacion
+      // completa". El paciente entraba a su perfil desde el listado de citas
+      // con `go`, la pila quedaba con una sola entrada, y atras cerraba la
+      // app en vez de devolverlo a sus citas. Lo mismo con la busqueda.
+      final malas = <String>[];
+
+      for (final f in fuentes()) {
+        for (var i = 0; i < f.lineas.length; i++) {
+          final m = RegExp(
+            r'context\.go\(\s*Rutas\.(\w+)',
+          ).firstMatch(f.lineas[i]);
+          if (m == null) continue;
+          if (cambiosDeCasa.contains(m.group(1))) continue;
+          malas.add('${f.ruta}:${i + 1} -> Rutas.${m.group(1)}');
+        }
+      }
+
+      expect(
+        malas,
+        isEmpty,
+        reason:
+            'go() borra la pila y deja al usuario sin vuelta atras.\n'
+            'Para un desvio —perfil, busqueda, un detalle— va push().\n'
+            '$malas',
+      );
+    });
+  });
+
   group('rubro 3.6 — toda ruta tiene por donde llegarse', () {
     /// Rutas que no necesitan un `go`/`push` explicito.
     const alcanzablesSinEnlace = {

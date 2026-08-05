@@ -124,7 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           AppButton(
             label: 'Crear una cuenta',
             variant: AppButtonVariant.secundaria,
-            onPressed: _enviando ? null : () => context.go(Rutas.registro),
+            onPressed: _enviando ? null : () => context.push(Rutas.registro),
           ),
         ],
       ),

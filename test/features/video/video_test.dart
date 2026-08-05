@@ -401,7 +401,10 @@ void main() {
     test('una fecha invalida no revienta la pantalla', () async {
       final r = await VideoRepository(_FechaRota()).porCita(7);
 
-      expect(r.failureONull, isA<ErrorInesperado>());
+      // `ContratoRoto` y no `ErrorInesperado`: aca si se sabe que paso —el
+      // servidor mando algo con otra forma— y `PoliticaReintento` no lo
+      // reintenta, porque la forma no se arregla esperando.
+      expect(r.failureONull, isA<ContratoRoto>());
     });
 
     test(

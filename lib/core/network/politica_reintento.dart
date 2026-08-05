@@ -33,6 +33,10 @@ abstract final class PoliticaReintento {
 
       // Deterministas. Reintentar no cambia la respuesta y en algunos casos
       // es peor que no hacer nada.
+      // Reintentar una respuesta con la forma equivocada da diez veces la
+      // forma equivocada, y deja al usuario 38 s mirando un skeleton antes de
+      // enterarse. El contrato no se arregla esperando.
+      ContratoRoto() ||
       NoAutorizado() ||
       SesionExpirada() ||
       Prohibido() ||
