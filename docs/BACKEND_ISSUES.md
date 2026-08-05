@@ -244,3 +244,35 @@ ahi mismo.
 **Lo que haria falta del lado servidor:** una ruta de subida que devuelva la
 URL ya guardada, y una politica de acceso — un adjunto de una conversacion
 clinica no puede quedar servido en una carpeta publica.
+
+---
+
+## #10 — El medico no puede saber quien le escribio
+
+**Encontrado:** 2026-08-05, construyendo la lista de conversaciones.
+
+`ConversacionResponseDto` devuelve `idPaciente` e `idMedico` y **ningun
+nombre**, igual que `AppointmentResponseDto`. Para las citas eso se resuelve
+pidiendo `GET /doctors/{id}` — es lo que hace `MedicoDirectorio`, con cache.
+
+En el chat solo funciona **una de las dos direcciones**:
+
+| Quien mira | Al otro lo resuelve | Ruta |
+| - | - | - |
+| Paciente | Si, por nombre | `GET /doctors/{id}` |
+| Medico | **No** | no existe `GET /patients/{id}` |
+
+Verificado en `back/src/modules/patients/patients.controller.ts`: la unica
+ruta de lectura es `@Get('me')`. El medico no tiene forma de saber el nombre
+del paciente que le escribio.
+
+**Mientras tanto:** la fila muestra `Paciente #7`. Es feo pero es cierto —
+mejor que inventar un nombre o dejar un numero suelto sin etiqueta. Hay una
+prueba que lo fija (`chat_screen_test.dart`, "el medico no puede ver el
+nombre del paciente") para que el dia que la ruta exista alguien la vea y la
+cambie.
+
+**Lo que haria falta del lado servidor:** o `GET /patients/{id}` restringido
+a medicos con una conversacion o cita con ese paciente, o —mejor— que
+`ConversacionResponseDto` traiga los dos nombres y se ahorre la peticion
+extra en las dos direcciones.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/data/medico_directorio.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -13,7 +14,14 @@ import '../providers/chat_provider.dart';
 
 /// Listado de conversaciones — RF-31, RF-33.
 class ConversacionesScreen extends ConsumerWidget {
-  const ConversacionesScreen({super.key});
+  const ConversacionesScreen({required this.esMedico, super.key});
+
+  /// Qué rol mira la lista, inyectado por el router.
+  ///
+  /// Decide **quién es el otro** en cada hilo: el paciente ve al médico, y el
+  /// médico vería al paciente. Leerlo aquí de `sesionActualProvider` obligaría
+  /// a importar de `features/auth` (rubro 3.3).
+  final bool esMedico;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,20 +52,65 @@ class ConversacionesScreen extends ConsumerWidget {
                   itemCount: value.length,
                   separatorBuilder: (_, _) =>
                       SizedBox(height: context.density.separacionLista),
-                  itemBuilder: (context, i) => _Fila(conversacion: value[i]),
+                  itemBuilder: (context, i) =>
+                      _Fila(conversacion: value[i], esMedico: esMedico),
                 ),
       },
     );
   }
 }
 
-class _Fila extends StatelessWidget {
-  const _Fila({required this.conversacion});
+/// Con quién es el hilo.
+///
+/// **La respuesta solo trae ids.** `ConversacionResponseDto` devuelve
+/// `idPaciente` e `idMedico` y ningún nombre, así que hay que resolverlo
+/// aparte — igual que las citas, y por eso se reusa `MedicoDirectorio`, que ya
+/// cachea y coalesce las peticiones repetidas.
+///
+/// **Y solo se puede resolver una de las dos direcciones.** El paciente ve el
+/// nombre del médico porque existe `GET /doctors/{id}`. El médico **no** puede
+/// ver el del paciente: la única ruta de `patients` es `/me`
+/// ([#10](../../../../../docs/BACKEND_ISSUES.md)). Ahí se muestra el id con su
+/// etiqueta en vez de inventar un nombre o dejar un número suelto.
+class _Titulo extends ConsumerWidget {
+  const _Titulo({
+    required this.conversacion,
+    required this.esMedico,
+    required this.estilo,
+  });
 
   final Conversacion conversacion;
+  final bool esMedico;
+  final TextStyle estilo;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (esMedico) {
+      return Text('Paciente #${conversacion.idPaciente}', style: estilo);
+    }
+
+    return FutureBuilder(
+      future: ref
+          .watch(medicoDirectorioProvider)
+          .resolver(conversacion.idMedico),
+      builder: (context, snapshot) => Text(
+        // Mientras resuelve —o si el médico ya no está— se muestra el id: un
+        // texto vacío haría que la fila salte cuando llegue el nombre.
+        snapshot.data?.nombreCompleto ?? 'Médico #${conversacion.idMedico}',
+        style: estilo,
+      ),
+    );
+  }
+}
+
+class _Fila extends ConsumerWidget {
+  const _Fila({required this.conversacion, required this.esMedico});
+
+  final Conversacion conversacion;
+  final bool esMedico;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = context.text;
     final colors = context.colors;
     final ultimo = conversacion.ultimoMensajeUtc;
@@ -71,11 +124,12 @@ class _Fila extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Conversacion #${conversacion.id}',
+                _Titulo(
+                  conversacion: conversacion,
+                  esMedico: esMedico,
                   // Con mensajes sin leer va en negrita: el peso es el
                   // segundo canal, para que no dependa solo del contador.
-                  style: conversacion.tieneSinLeer
+                  estilo: conversacion.tieneSinLeer
                       ? text.bodyStrong
                       : text.body,
                 ),

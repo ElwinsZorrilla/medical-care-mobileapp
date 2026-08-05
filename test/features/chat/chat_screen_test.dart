@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:medicare/core/data/medico_directorio.dart';
+import 'package:medicare/core/domain/medico.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
 import 'package:medicare/core/time/app_time.dart';
@@ -147,6 +149,26 @@ class _SocketFalso extends ChatSocket {
   void emitir(Mensaje m) => _mensajes.add(m);
 }
 
+/// El nombre no viene en la respuesta del chat: se pide a `/doctors/{id}`,
+/// que es lo que este doble reemplaza.
+///
+/// El nombre **lleva el id dentro** a proposito. Devolviendo siempre el mismo,
+/// una fila que resolviera el medico equivocado daria el mismo texto y la
+/// prueba no distinguiria nada.
+class _DirectorioFalso extends MedicoDirectorio {
+  _DirectorioFalso() : super(Dio());
+
+  @override
+  Future<PerfilMedico?> resolver(int idMedico) async => PerfilMedico(
+    idMedico: idMedico,
+    idUsuario: 900 + idMedico,
+    nombres: 'Ana$idMedico',
+    apellidos: 'Gomez',
+    numExequatur: 'EXQ-$idMedico',
+    estadoVerificacion: EstadoVerificacion.verificado,
+  );
+}
+
 void main() {
   setUpAll(AppTime.init);
 
@@ -158,6 +180,9 @@ void main() {
         overrides: [
           chatRepositoryProvider.overrideWithValue(ChatRepository(api)),
           chatSocketProvider.overrideWith((ref) async => socket),
+          // `ConversacionResponseDto` solo trae ids: el nombre se resuelve
+          // aparte. Sin este doble, la lista intentaria una peticion real.
+          medicoDirectorioProvider.overrideWithValue(_DirectorioFalso()),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -185,13 +210,16 @@ void main() {
     bool vacia = false,
     Duration demora = Duration.zero,
     bool esperar = true,
+    bool esMedico = false,
   }) async {
     final api = _ApiFalsa(
       status: status,
       sinConversaciones: vacia,
       demora: demora,
     );
-    await tester.pumpWidget(envolver(const ConversacionesScreen(), api));
+    await tester.pumpWidget(
+      envolver(ConversacionesScreen(esMedico: esMedico), api),
+    );
     if (esperar) await asentar(tester);
     return api;
   }
@@ -250,9 +278,26 @@ void main() {
       await montarLista(tester);
 
       expect(find.byType(AppCard), findsNWidgets(2));
-      expect(find.text('Conversacion #1'), findsOneWidget);
+      // El paciente ve el nombre del medico, no el id del hilo — y cada
+      // fila resuelve el suyo: los hilos son con el 9 y con el 11.
+      expect(find.text('Dr. Ana9 Gomez'), findsOneWidget);
+      expect(find.text('Dr. Ana11 Gomez'), findsOneWidget);
       // El contador de no leidos, visible sin abrir nada.
       expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('el medico no puede ver el nombre del paciente', (
+      tester,
+    ) async {
+      // No es una omision: la unica ruta de `patients` es `/me`
+      // (BACKEND_ISSUES #10), asi que el nombre no se puede resolver. Se
+      // muestra el id etiquetado en vez de inventar uno o dejar un numero
+      // suelto. Esta prueba existe para que el dia que el backend agregue
+      // `GET /patients/{id}` alguien la vea y la cambie.
+      await montarLista(tester, esMedico: true);
+
+      expect(find.text('Paciente #7'), findsNWidgets(2));
+      expect(find.textContaining('Dr.'), findsNothing);
     });
 
     testWidgets('el hilo sin mensajes lo dice, no muestra una fecha vacia', (

@@ -1,8 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../domain/especialidad.dart';
 import '../domain/medico.dart';
+import '../network/infra_provider.dart';
 import 'medico_dto.dart';
+
+part 'medico_directorio.g.dart';
 
 /// Resuelve `idMedico` → [PerfilMedico], con caché en memoria.
 ///
@@ -116,3 +120,16 @@ class MedicoDirectorio {
     tarifaConsulta: dto.tarifaConsulta?.toDouble(),
   );
 }
+
+/// El directorio, compartido.
+///
+/// El provider vivia en `citas`, con la clase ya aca. Cuando `chat` necesito
+/// resolver el nombre del medico de una conversacion, esa asimetria se volvio
+/// un import cruzado: bajo a `core/` junto a lo que ya estaba.
+///
+/// `keepAlive`: el valor de la cache esta en que sobrevive a la navegacion.
+/// Si se reconstruyera al volver a la lista, cada visita pagaria de nuevo las
+/// mismas peticiones.
+@Riverpod(keepAlive: true)
+MedicoDirectorio medicoDirectorio(Ref ref) =>
+    MedicoDirectorio(ref.watch(dioClienteProvider));

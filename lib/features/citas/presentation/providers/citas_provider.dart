@@ -22,13 +22,6 @@ CitasRepository citasRepository(Ref ref) =>
 
 /// Caché de médicos — resuelve el N+1 de los listados.
 ///
-/// `keepAlive`: el valor de la caché está en que sobrevive a la navegación.
-/// Si se reconstruyera al volver a la lista, cada visita pagaría de nuevo
-/// las mismas peticiones.
-@Riverpod(keepAlive: true)
-MedicoDirectorio medicoDirectorio(Ref ref) =>
-    MedicoDirectorio(ref.watch(dioClienteProvider));
-
 /// Filtro de estado — **del lado cliente**.
 ///
 /// `ListAppointmentsQueryDto` del backend solo acepta paginación: no hay

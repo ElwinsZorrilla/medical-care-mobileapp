@@ -129,7 +129,14 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Rutas.conversaciones,
         name: 'conversaciones',
-        builder: (context, state) => const ConversacionesScreen(),
+        builder: (context, state) => ConversacionesScreen(
+          // Decide quien es "el otro" en cada hilo. Va inyectado por la
+          // misma razon que `idUsuario` en `chat`: leerlo dentro del feature
+          // cruzaria a `auth` (rubro 3.3).
+          esMedico:
+              ref.read(sesionActualProvider).usuario?.tipo ==
+              TipoUsuario.medico,
+        ),
       ),
       GoRoute(
         // Va antes que `chat`: tiene tres segmentos, no choca, pero se lee
