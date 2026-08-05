@@ -1,6 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/domain/especialidad.dart';
 import '../../../../core/domain/medico.dart';
 import '../../../../core/domain/pagina.dart';
 import '../../../../core/error/failure.dart';
@@ -14,22 +13,6 @@ part 'busqueda_provider.g.dart';
 @Riverpod(keepAlive: true)
 BusquedaRepository busquedaRepository(Ref ref) =>
     BusquedaRepository(BusquedaApi(ref.watch(dioClienteProvider)));
-
-/// Catálogo de especialidades — RF-12.
-///
-/// `keepAlive`: son 10 registros que no cambian durante la sesión. Volver a
-/// pedirlos cada vez que se abre el filtro es gastar datos móviles en algo
-/// que ya se tiene.
-@Riverpod(keepAlive: true)
-Future<List<Especialidad>> catalogoEspecialidades(Ref ref) async {
-  final resultado = await ref
-      .watch(busquedaRepositoryProvider)
-      .especialidades();
-  return switch (resultado) {
-    Ok(:final valor) => valor,
-    Fallo(:final failure) => throw failure,
-  };
-}
 
 /// Especialidad seleccionada en el filtro — RF-14.
 ///

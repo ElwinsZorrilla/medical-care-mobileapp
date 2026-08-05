@@ -20,28 +20,6 @@ class _ApiFalsa extends BusquedaApi {
   int? paginaPedida;
   int? limitePedido;
 
-  static DioException httpError(int status) {
-    final o = RequestOptions(path: '/doctors');
-    return DioException(
-      requestOptions: o,
-      response: Response<dynamic>(requestOptions: o, statusCode: status),
-      type: DioExceptionType.badResponse,
-    );
-  }
-
-  @override
-  Future<List<CatalogoEspecialidadDto>> especialidades() async {
-    if (error != null) throw error!;
-    return const [
-      CatalogoEspecialidadDto(idEspecialidad: 1, nombre: 'Medicina General'),
-      CatalogoEspecialidadDto(
-        idEspecialidad: 4,
-        nombre: 'Cardiología',
-        descripcion: 'Corazón',
-      ),
-    ];
-  }
-
   @override
   Future<PaginaMedicosDto> medicos({
     int pagina = 1,
@@ -76,26 +54,6 @@ class _ApiFalsa extends BusquedaApi {
 }
 
 void main() {
-  group('especialidades — RF-12', () {
-    test('camino feliz: traduce el catálogo', () async {
-      final r = await BusquedaRepository(_ApiFalsa()).especialidades();
-
-      final lista = r.valorONull!;
-      expect(lista, hasLength(2));
-      expect(lista.first.nombre, 'Medicina General');
-      expect(lista.last.descripcion, 'Corazón');
-    });
-
-    test('camino de error: se reporta', () async {
-      final r = await BusquedaRepository(
-        _ApiFalsa(error: _ApiFalsa.httpError(500)),
-      ).especialidades();
-
-      expect(r.esFallo, isTrue);
-      expect(r.failureONull, isA<ErrorServidor>());
-    });
-  });
-
   group('médicos — RF-13, RF-14, RF-15', () {
     test('camino feliz: traduce y arma la página', () async {
       final r = await BusquedaRepository(_ApiFalsa(total: 3)).medicos();

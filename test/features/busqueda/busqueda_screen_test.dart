@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medicare/core/data/especialidades_catalogo.dart';
 import 'package:medicare/core/data/medico_dto.dart';
 import 'package:medicare/core/domain/pagina.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
@@ -15,6 +16,36 @@ import 'package:medicare/features/busqueda/data/busqueda_repository.dart';
 import 'package:medicare/features/busqueda/presentation/providers/busqueda_provider.dart';
 import 'package:medicare/features/busqueda/presentation/screens/busqueda_screen.dart';
 
+/// Doble del catálogo, que desde RF-11 vive en `core/`.
+///
+/// Antes lo servía `_ApiFalsa` junto con los médicos. Al subir a `core` para
+/// que `perfil` también lo use, dejó de colgar de `BusquedaApi` — así que el
+/// interruptor de fallo se mudó acá y la prueba del "Cargar especialidades"
+/// sigue ejerciendo lo mismo.
+class _CatalogoFalso extends EspecialidadesApi {
+  _CatalogoFalso({this.status, this.demora = Duration.zero}) : super(Dio());
+
+  int? status;
+  final Duration demora;
+
+  @override
+  Future<List<EspecialidadDto>> catalogo() async {
+    if (demora > Duration.zero) await Future<void>.delayed(demora);
+    if (status != null) {
+      final o = RequestOptions(path: '/specialties');
+      throw DioException(
+        requestOptions: o,
+        response: Response<dynamic>(requestOptions: o, statusCode: status),
+        type: DioExceptionType.badResponse,
+      );
+    }
+    return const [
+      EspecialidadDto(idEspecialidad: 1, nombre: 'Medicina General'),
+      EspecialidadDto(idEspecialidad: 4, nombre: 'Cardiología'),
+    ];
+  }
+}
+
 /// Devuelve páginas **llenas** a propósito.
 ///
 /// Con un médico por página la lista nunca desborda la pantalla, no hay
@@ -25,16 +56,12 @@ class _ApiFalsa extends BusquedaApi {
   _ApiFalsa({
     this.total = 1,
     this.statusMedicos,
-    this.statusEspecialidades,
     this.demora = Duration.zero,
     this.fallaPagina2 = false,
   }) : super(Dio());
 
   final int total;
   final int? statusMedicos;
-  // Mutable: una prueba lo apaga para verificar que el reintento del filtro
-  // de verdad recupera el catálogo.
-  int? statusEspecialidades;
   final Duration demora;
   final bool fallaPagina2;
 
@@ -48,16 +75,6 @@ class _ApiFalsa extends BusquedaApi {
       response: Response<dynamic>(requestOptions: o, statusCode: status),
       type: DioExceptionType.badResponse,
     );
-  }
-
-  @override
-  Future<List<CatalogoEspecialidadDto>> especialidades() async {
-    if (demora > Duration.zero) await Future<void>.delayed(demora);
-    if (statusEspecialidades != null) throw _error(statusEspecialidades!);
-    return const [
-      CatalogoEspecialidadDto(idEspecialidad: 1, nombre: 'Medicina General'),
-      CatalogoEspecialidadDto(idEspecialidad: 4, nombre: 'Cardiología'),
-    ];
   }
 
   @override
@@ -101,7 +118,9 @@ class _ApiFalsa extends BusquedaApi {
 }
 
 void main() {
-  Future<_ApiFalsa> montar(
+  /// Devuelve los **dos** dobles: los médicos y el catálogo, que desde RF-11
+  /// son piezas separadas.
+  Future<({_ApiFalsa api, _CatalogoFalso catalogo})> montar(
     WidgetTester tester, {
     int total = 1,
     int? statusMedicos,
@@ -113,9 +132,12 @@ void main() {
     final api = _ApiFalsa(
       total: total,
       statusMedicos: statusMedicos,
-      statusEspecialidades: statusEspecialidades,
       demora: demora,
       fallaPagina2: fallaPagina2,
+    );
+    final catalogo = _CatalogoFalso(
+      status: statusEspecialidades,
+      demora: demora,
     );
     await tester.pumpWidget(
       ProviderScope(
@@ -125,6 +147,9 @@ void main() {
         retry: PoliticaReintento.decidir,
         overrides: [
           busquedaRepositoryProvider.overrideWithValue(BusquedaRepository(api)),
+          especialidadesRepositoryProvider.overrideWithValue(
+            EspecialidadesRepository(catalogo),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -148,7 +173,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
     }
-    return api;
+    return (api: api, catalogo: catalogo);
   }
 
   /// El listado vertical. Hay dos `Scrollable` en pantalla —el filtro de
@@ -210,7 +235,7 @@ void main() {
     });
 
     testWidgets('reintentar vuelve a pedir la página 1', (tester) async {
-      final api = await montar(tester, statusMedicos: 500);
+      final api = (await montar(tester, statusMedicos: 500)).api;
       api.paginasPedidas.clear();
 
       await tester.tap(find.text('Reintentar'));
@@ -247,11 +272,14 @@ void main() {
       // `catalogoEspecialidades` es `keepAlive`: sin una salida propia, un
       // bache de red al abrir la pantalla deja al usuario sin filtro por el
       // resto de la sesión. El "Reintentar" de la lista no lo recupera.
-      final api = await montar(tester, statusEspecialidades: 500);
+      final catalogo = (await montar(
+        tester,
+        statusEspecialidades: 500,
+      )).catalogo;
 
       expect(find.text('Cargar especialidades'), findsOneWidget);
 
-      api.statusEspecialidades = null;
+      catalogo.status = null;
       await tester.tap(find.text('Cargar especialidades'));
       await tester.pumpAndSettle();
 
@@ -280,7 +308,7 @@ void main() {
     });
 
     testWidgets('tocar una especialidad la manda al backend', (tester) async {
-      final api = await montar(tester);
+      final api = (await montar(tester)).api;
       expect(api.especialidadPedida, isNull);
 
       await tester.tap(find.widgetWithText(InkWell, 'Cardiología').first);
@@ -290,7 +318,7 @@ void main() {
     });
 
     testWidgets('volver a Todas quita el filtro', (tester) async {
-      final api = await montar(tester);
+      final api = (await montar(tester)).api;
 
       await tester.tap(find.widgetWithText(InkWell, 'Cardiología').first);
       await tester.pumpAndSettle();
@@ -303,7 +331,7 @@ void main() {
     testWidgets('cambiar de filtro reinicia en la página 1', (tester) async {
       // Si conservara la página, filtrar estando en la 3 mostraría un listado
       // que empieza por la mitad.
-      final api = await montar(tester, total: 40);
+      final api = (await montar(tester, total: 40)).api;
       await scrollear(tester);
       expect(api.paginasPedidas, contains(2));
       api.paginasPedidas.clear();
@@ -319,7 +347,7 @@ void main() {
     testWidgets('scrollear cerca del final pide la página siguiente', (
       tester,
     ) async {
-      final api = await montar(tester, total: 40);
+      final api = (await montar(tester, total: 40)).api;
       expect(api.paginasPedidas, [1]);
 
       await scrollear(tester);
@@ -345,7 +373,7 @@ void main() {
     });
 
     testWidgets('con una sola página no pide más', (tester) async {
-      final api = await montar(tester, total: 5);
+      final api = (await montar(tester, total: 5)).api;
 
       await scrollear(tester);
 
@@ -355,11 +383,11 @@ void main() {
     testWidgets('no pide la misma página dos veces a la vez', (tester) async {
       // El listener del scroll dispara en cada frame del arrastre; sin el
       // candado del provider se pediría la 2 varias veces.
-      final api = await montar(
+      final api = (await montar(
         tester,
         total: 40,
         demora: const Duration(milliseconds: 30),
-      );
+      )).api;
       api.paginasPedidas.clear();
 
       await tester.drag(find.byType(AppCard).first, const Offset(0, -600));
@@ -384,7 +412,7 @@ void main() {
     });
 
     testWidgets('el pie reintenta solo la página que falló', (tester) async {
-      final api = await montar(tester, total: 40, fallaPagina2: true);
+      final api = (await montar(tester, total: 40, fallaPagina2: true)).api;
       await scrollear(tester);
       await scrollearHasta(tester, find.text('Cargar más'));
       api.paginasPedidas.clear();

@@ -8,30 +8,12 @@ import '../../../core/error/failure.dart';
 import '../../../core/error/failure_mapper.dart';
 import '../../../core/network/result.dart';
 import 'busqueda_api.dart';
-import 'busqueda_dto.dart';
 
 /// Traduce DTO → entidad y `DioException` → [Failure].
 class BusquedaRepository {
   const BusquedaRepository(this._api);
 
   final BusquedaApi _api;
-
-  /// RF-12 — catálogo de especialidades.
-  Future<Result<List<Especialidad>>> especialidades() async {
-    try {
-      final dtos = await _api.especialidades();
-      return Ok(dtos.map(_aEspecialidad).toList());
-    } on TypeError catch (e) {
-      // Un campo con otro tipo del declarado. `Result<T>` promete que ningun
-      // camino lanza; sin esto la promesa era falsa y la app se cerraba.
-      return Fallo(ContratoRoto('$e'));
-    } on FormatException catch (e) {
-      // Fecha, numero o `Decimal` ilegible.
-      return Fallo(ContratoRoto('$e'));
-    } on DioException catch (e) {
-      return Fallo(FailureMapper.desdeDio(e));
-    }
-  }
 
   /// RF-14, RF-15 — médicos, filtrables por especialidad y paginados.
   Future<Result<Pagina<PerfilMedico>>> medicos({
@@ -69,13 +51,6 @@ class BusquedaRepository {
       return Fallo(ErrorInesperado(e.message.toString()));
     }
   }
-
-  Especialidad _aEspecialidad(CatalogoEspecialidadDto dto) => Especialidad(
-    id: dto.idEspecialidad,
-    nombre: dto.nombre,
-    descripcion: dto.descripcion,
-    urlIcono: dto.urlIcono,
-  );
 
   PerfilMedico _aMedico(MedicoDto dto) => PerfilMedico(
     idMedico: dto.idMedico,

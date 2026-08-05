@@ -113,6 +113,21 @@ class EdicionPerfil extends _$EdicionPerfil {
     return r.failureONull;
   }
 
+  /// Guarda el perfil del médico y, si se eligieron, sus especialidades.
+  ///
+  /// Son **dos peticiones** porque el backend las separa: `POST/PATCH
+  /// /doctors` no acepta especialidades y `PUT /doctors/{id}/especialidades`
+  /// es su propia ruta.
+  ///
+  /// El orden importa y no se puede invertir: al **crear**, el `idMedico` que
+  /// la segunda ruta necesita solo existe después de que la primera responde.
+  ///
+  /// Si la segunda falla, la primera **ya quedó guardada** y no se deshace: no
+  /// hay transacción entre dos rutas HTTP, y un `PATCH` de compensación puede
+  /// fallar igual dejando un estado peor. Se devuelve el fallo con el perfil
+  /// ya persistido, y el médico puede reintentar solo las especialidades —
+  /// por eso el mensaje lo dice en vez de un "algo salió mal" que haría
+  /// pensar que se perdió todo.
   Future<Failure?> guardarMedico({
     required int? idMedico,
     required String nombres,
@@ -121,6 +136,7 @@ class EdicionPerfil extends _$EdicionPerfil {
     String? biografia,
     int? aniosExperiencia,
     double? tarifaConsulta,
+    List<int>? especialidadIds,
   }) async {
     final repo = ref.read(perfilRepositoryProvider);
     final r = idMedico == null
@@ -141,7 +157,25 @@ class EdicionPerfil extends _$EdicionPerfil {
             tarifaConsulta: tarifaConsulta,
           );
 
-    if (r.esOk) ref.invalidate(miPerfilMedicoProvider);
-    return r.failureONull;
+    if (r case Fallo(:final failure)) return failure;
+    final guardado = (r as Ok<PerfilMedico>).valor;
+
+    // RF-11 — las especialidades, ya con el id que la segunda ruta necesita.
+    Failure? falloEspecialidades;
+    if (especialidadIds != null) {
+      final r2 = await repo.vincularEspecialidades(
+        idMedico: guardado.idMedico,
+        especialidadIds: especialidadIds,
+      );
+      if (r2 case Fallo(:final failure)) {
+        falloEspecialidades = ErrorInesperado(
+          'Guardamos tu perfil, pero no las especialidades: '
+          '${failure.mensaje}',
+        );
+      }
+    }
+
+    ref.invalidate(miPerfilMedicoProvider);
+    return falloEspecialidades;
   }
 }

@@ -9,14 +9,6 @@ class BusquedaApi {
 
   final Dio _dio;
 
-  /// `GET /specialties` — RF-12. Sin paginar.
-  Future<List<CatalogoEspecialidadDto>> especialidades() async {
-    final res = await _dio.get<List<dynamic>>('/specialties');
-    return (res.data ?? const [])
-        .map((e) => CatalogoEspecialidadDto.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
   /// `GET /doctors` — RF-14, RF-15.
   ///
   /// El único filtro es `especialidadId`: **no hay búsqueda por texto** en el

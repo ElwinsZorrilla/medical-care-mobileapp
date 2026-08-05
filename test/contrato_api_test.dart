@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medicare/core/data/especialidades_catalogo.dart';
 import 'package:medicare/core/data/notificaciones_api.dart';
 import 'package:medicare/core/data/notificaciones_dto.dart';
 import 'package:medicare/features/agenda/data/agenda_api.dart';
@@ -10,7 +11,6 @@ import 'package:medicare/features/agenda/data/agenda_dto.dart';
 import 'package:medicare/features/auth/data/auth_api.dart';
 import 'package:medicare/features/auth/data/auth_dto.dart';
 import 'package:medicare/features/busqueda/data/busqueda_api.dart';
-import 'package:medicare/features/busqueda/data/busqueda_dto.dart';
 import 'package:medicare/features/chat/data/chat_api.dart';
 import 'package:medicare/features/chat/data/chat_dto.dart';
 import 'package:medicare/features/citas/data/citas_api.dart';
@@ -214,12 +214,14 @@ void main() {
 
     test('el catálogo no pagina', () async {
       final espia = _Espia([
-        const CatalogoEspecialidadDto(
+        const EspecialidadDto(
           idEspecialidad: 1,
           nombre: 'Medicina General',
         ).toJson(),
       ]);
-      await BusquedaApi(_dio(espia)).especialidades();
+      // El catálogo subió a `core/`: lo consumen `busqueda` (filtro, RF-12) y
+      // `perfil` (las del médico, RF-11), y un feature no importa de otro.
+      await EspecialidadesApi(_dio(espia)).catalogo();
 
       expect(espia.uri.path, '/api/specialties');
       expect(espia.uri.queryParameters, isEmpty);

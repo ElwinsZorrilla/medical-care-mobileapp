@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/data/especialidades_catalogo.dart';
+import '../../../../core/domain/especialidad.dart';
 import '../../../../core/domain/fecha_calendario.dart';
 import '../../../../core/domain/tipo_usuario.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../domain/perfil.dart';
@@ -241,6 +244,12 @@ class _MedicoState extends ConsumerState<_FormularioMedico> {
   bool _enviando = false;
   bool _precargado = false;
 
+  /// RF-11 — las especialidades elegidas.
+  ///
+  /// `Set` y no `List`: tocar dos veces el mismo chip no puede mandar el id
+  /// repetido, y el backend guardaría la relación duplicada.
+  final Set<int> _especialidades = {};
+
   @override
   void dispose() {
     for (final c in [
@@ -265,6 +274,9 @@ class _MedicoState extends ConsumerState<_FormularioMedico> {
     _biografia.text = m.biografia ?? '';
     _anios.text = m.aniosExperiencia?.toString() ?? '';
     _tarifa.text = m.tarifaConsulta?.toStringAsFixed(0) ?? '';
+    _especialidades
+      ..clear()
+      ..addAll(m.especialidades.map((e) => e.id));
   }
 
   Future<void> _guardar(int? idMedico) async {
@@ -295,6 +307,7 @@ class _MedicoState extends ConsumerState<_FormularioMedico> {
               : _biografia.text.trim(),
           aniosExperiencia: int.tryParse(_anios.text.trim()),
           tarifaConsulta: double.tryParse(_tarifa.text.trim()),
+          especialidadIds: _especialidades.toList(),
         );
 
     if (!mounted) return;
@@ -367,6 +380,15 @@ class _MedicoState extends ConsumerState<_FormularioMedico> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: Space.xl),
+        const SectionHeader(titulo: 'Especialidades'),
+        const SizedBox(height: Space.md),
+        _SelectorEspecialidades(
+          elegidas: _especialidades,
+          onCambio: (id, activa) => setState(() {
+            activa ? _especialidades.add(id) : _especialidades.remove(id);
+          }),
+        ),
+        const SizedBox(height: Space.xl),
         AppButton(
           label: _enviando
               ? 'Guardando…'
@@ -374,6 +396,118 @@ class _MedicoState extends ConsumerState<_FormularioMedico> {
           onPressed: _enviando ? null : () => _guardar(m?.idMedico),
         ),
       ],
+    );
+  }
+}
+
+/// RF-11 — el médico elige sus especialidades del catálogo.
+///
+/// Es un multi-select y no un desplegable de una sola: un médico puede tener
+/// varias, y el backend recibe una lista.
+///
+/// Si el catálogo no carga, **el formulario sigue usable**: el resto del
+/// perfil se puede guardar igual. Tumbar la pantalla entera porque falló una
+/// petición secundaria dejaría al médico sin poder ni corregir su nombre.
+class _SelectorEspecialidades extends ConsumerWidget {
+  const _SelectorEspecialidades({
+    required this.elegidas,
+    required this.onCambio,
+  });
+
+  final Set<int> elegidas;
+  final void Function(int id, bool activa) onCambio;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final catalogo = ref.watch(catalogoEspecialidadesProvider);
+
+    return switch (catalogo) {
+      AsyncLoading<List<Especialidad>>() => const LoadingSkeleton(),
+      AsyncError<List<Especialidad>>() => Align(
+        alignment: Alignment.centerLeft,
+        child: AppButton(
+          label: 'Cargar especialidades',
+          variant: AppButtonVariant.secundaria,
+          expandido: false,
+          onPressed: () => ref.invalidate(catalogoEspecialidadesProvider),
+        ),
+      ),
+      AsyncData<List<Especialidad>>(:final value) =>
+        value.isEmpty
+            ? Text(
+                'No hay especialidades en el catálogo.',
+                style: context.text.caption,
+              )
+            : Wrap(
+                spacing: Space.sm,
+                runSpacing: Space.sm,
+                children: [
+                  for (final e in value)
+                    _ChipEspecialidad(
+                      etiqueta: e.nombre,
+                      activa: elegidas.contains(e.id),
+                      onTap: () => onCambio(e.id, !elegidas.contains(e.id)),
+                    ),
+                ],
+              ),
+    };
+  }
+}
+
+class _ChipEspecialidad extends StatelessWidget {
+  const _ChipEspecialidad({
+    required this.etiqueta,
+    required this.activa,
+    required this.onTap,
+  });
+
+  final String etiqueta;
+  final bool activa;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Semantics(
+      button: true,
+      selected: activa,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: Radii.chip,
+        child: Container(
+          alignment: Alignment.center,
+          constraints: const BoxConstraints(minHeight: kTactilMinimo),
+          padding: const EdgeInsets.symmetric(horizontal: Space.md),
+          decoration: BoxDecoration(
+            color: activa ? colors.verde : colors.surface,
+            borderRadius: Radii.chip,
+            border: Border.all(
+              color: activa ? colors.verde : colors.filete,
+              width: Strokes.filete,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Tercer canal: el color solo no distingue elegida de no
+              // elegida para quien no lo percibe (RNF-04).
+              Icon(
+                activa ? Icons.check : Icons.add,
+                size: Space.md,
+                color: activa ? colors.surface : colors.steel,
+              ),
+              const SizedBox(width: Space.xs),
+              Text(
+                etiqueta,
+                style: context.text.label.copyWith(
+                  color: activa ? colors.surface : colors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
