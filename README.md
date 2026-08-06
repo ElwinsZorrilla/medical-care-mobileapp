@@ -20,6 +20,21 @@ dart run build_runner build          # genera *.g.dart y *.freezed.dart
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api
 ```
 
+**El segundo comando no es opcional, y hay que repetirlo cada vez que se hace
+`git pull`.** `*.g.dart` y `*.freezed.dart` no se versionan, y
+`flutter run`/`flutter build` **no** corren `build_runner`. Traer cambios que
+tocan DTOs o providers y compilar sin regenerar da errores que no nombran la
+causa:
+
+```
+Error when reading 'lib/core/data/especialidades_catalogo.g.dart'
+Undefined name 'catalogoEspecialidades'
+```
+
+El primero es un archivo que nunca se generó. El segundo es peor: un `.g.dart`
+de antes del pull, que todavía declara un símbolo que ya se movió de archivo.
+Los dos se arreglan con el mismo comando.
+
 `API_BASE_URL` **es obligatoria y no tiene valor por defecto**. La app valida
 al arrancar y falla ruidosamente si falta: un error de configuración tiene que
 verse como error de configuración, no como una pantalla en blanco (RNF-04).
@@ -30,6 +45,21 @@ verse como error de configuración, no como una pantalla en blanco (RNF-04).
 
 Nada de URLs, llaves ni identificadores en el código. Todo entra por
 `--dart-define` (ver `lib/core/config/env.dart`).
+
+### Compilar el APK
+
+```bash
+./scripts/build_apk.sh                          # emulador (10.0.2.2)
+./scripts/build_apk.sh 192.168.1.50             # teléfono en la red local
+./scripts/build_apk.sh 192.168.1.50 salida.apk  # y con nombre propio
+```
+
+El script regenera el código, analiza antes de esperar los ~13 minutos del
+APK, y al terminar **abre el binario y comprueba que la URL quedó adentro**.
+La URL es una constante de compilación: si el `--dart-define` no llegó, la app
+instala bien y falla al primer pedido. Comprobarlo en el `.apk` y no en el
+comando que uno cree haber corrido es la diferencia entre saberlo ahora y
+descubrirlo en el teléfono.
 
 ## La barra de calidad
 
@@ -95,8 +125,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 83.4 % (excluyendo código generado) |
-| Pruebas | 618 (614 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 85.2 % excluyendo código generado — 82.6 % contándolo todo |
+| Pruebas | 638 (634 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

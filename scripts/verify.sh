@@ -59,6 +59,20 @@ pct=$(awk -F: '
   }
 ' coverage/lcov.info)
 
+# La medida cruda, sin excluir nada. Se imprime al lado de la otra a
+# proposito: son ~2.5 puntos de diferencia, y reportar solo la favorable sin
+# decir cual es deja al lector creyendo que hay un unico numero. Paso —tres
+# commits diciendo "cobertura 85.2%" a secas— y el usuario pregunto por que
+# veia 82.5.
+crudo=$(awk -F: '
+  /^LF:/ { encontradas += $2 }
+  /^LH:/ { alcanzadas  += $2 }
+  END {
+    if (encontradas == 0) { print "0.0"; exit }
+    printf "%.1f", (alcanzadas / encontradas) * 100
+  }
+' coverage/lcov.info)
+
 awk -v p="$pct" -v min="$COBERTURA_MINIMA" \
   'BEGIN { exit (p >= min) ? 0 : 1 }' \
   || {
@@ -66,6 +80,45 @@ awk -v p="$pct" -v min="$COBERTURA_MINIMA" \
     exit 1
   }
 
-echo "cobertura ${pct}% (minimo ${COBERTURA_MINIMA}%)"
+echo "cobertura ${pct}% sin generados (minimo ${COBERTURA_MINIMA}%)"
+echo "          ${crudo}% contando todo"
+
+# Las cifras que los documentos afirman tienen que ser las que se acaban de
+# medir.
+#
+# Esto no puede vivir en una prueba, y por eso vive aca: `lcov.info` se
+# escribe *durante* `flutter test`, asi que una prueba que lo leyera se
+# estaria mirando a si misma a medio escribir. `documentacion_test.dart`
+# guarda los conteos de RF por la misma razon invertida — esos salen de un
+# archivo que ya existe.
+#
+# Sin esto, README y TRACEABILITY se quedaron en 83.4% durante tres fases.
+echo
+echo "── cifras de los documentos ───────────────────────────"
+desactualizados=0
+for doc in README.md docs/TRACEABILITY.md; do
+  # Cualquier "NN.N %" en una linea que hable de cobertura y que no sea
+  # ninguna de las **dos** medidas. Se filtra por linea para no marcar
+  # porcentajes de otra cosa —contraste, reduccion de assets— que viven en
+  # los mismos archivos.
+  #
+  # Las dos, no solo `pct`: la primera version de esta guarda aceptaba
+  # unicamente la cifra sin generados y marcaba como vieja la cruda que el
+  # README documenta a proposito. Una guarda que rechaza el dato correcto
+  # entrena a saltearsela.
+  viejas=$(grep -nE "[Cc]obertura|coverage" "$doc" 2>/dev/null \
+    | grep -oE "[0-9]{2}[.,][0-9] ?%" \
+    | tr ',' '.' | tr -d ' %' | sort -u \
+    | grep -vE "^(${pct}|${crudo})$" || true)
+  if [ -n "$viejas" ]; then
+    echo "FALLA: $doc afirma cobertura $(echo "$viejas" | tr '\n' ' ')" >&2
+    echo "       y lo medido es ${pct}% sin generados / ${crudo}% todo" >&2
+    desactualizados=1
+  else
+    echo "  $doc al dia"
+  fi
+done
+[ "$desactualizados" -eq 0 ] || exit 1
+
 echo
 echo "VERIFY OK"
