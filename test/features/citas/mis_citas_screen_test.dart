@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medicare/core/data/medico_directorio.dart';
+import 'package:medicare/core/data/paciente_directorio.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
 import 'package:medicare/core/time/app_time.dart';
@@ -103,6 +104,26 @@ class _SinDirectorio implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Responde `GET /patients/{id}` como lo haría el backend real — RF-24,
+/// BACKEND_ISSUES.md #10.
+class _ConNombrePaciente implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    '{"idPaciente":1,"idUsuario":10,"nombres":"Ana","apellidos":"Gómez"}',
+    200,
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
+  );
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   setUpAll(() async => AppTime.init());
 
@@ -114,6 +135,7 @@ void main() {
     int? errorAlCancelar,
     bool agenda = false,
     bool asentar = true,
+    HttpClientAdapter? transportePacientes,
   }) async {
     final api = _ApiFalsa(
       citas: citas,
@@ -131,6 +153,12 @@ void main() {
           citasRepositoryProvider.overrideWithValue(CitasRepository(api)),
           medicoDirectorioProvider.overrideWithValue(
             MedicoDirectorio(Dio()..httpClientAdapter = _SinDirectorio()),
+          ),
+          pacienteDirectorioProvider.overrideWithValue(
+            PacienteDirectorio(
+              Dio()
+                ..httpClientAdapter = transportePacientes ?? _SinDirectorio(),
+            ),
           ),
         ],
         child: MaterialApp(
@@ -270,6 +298,44 @@ void main() {
 
       expect(find.textContaining('Médico #2'), findsOneWidget);
       expect(find.byType(StatusRail), findsOneWidget);
+    });
+  });
+
+  group('el nombre del paciente — RF-24, BACKEND_ISSUES.md #10', () {
+    testWidgets('en la agenda, con el nombre resuelto, no dice "Paciente #"', (
+      tester,
+    ) async {
+      await montar(
+        tester,
+        citas: [cita()],
+        agenda: true,
+        transportePacientes: _ConNombrePaciente(),
+      );
+
+      expect(find.text('Dr. Ana Gómez'), findsNothing);
+      expect(find.text('Ana Gómez'), findsOneWidget);
+      expect(find.textContaining('Paciente #'), findsNothing);
+    });
+
+    testWidgets('si no se resolvió, cae al número — igual que el médico', (
+      tester,
+    ) async {
+      // Sin cita registrada con ese paciente, el backend da 403; el
+      // directorio lo trata igual que un 404: no resuelto.
+      await montar(tester, citas: [cita()], agenda: true);
+
+      expect(find.textContaining('Paciente #1'), findsOneWidget);
+      expect(find.byType(StatusRail), findsOneWidget);
+    });
+
+    testWidgets('en las citas del paciente no se pide nada de /patients', (
+      tester,
+    ) async {
+      // `agenda: false` es él mismo: no hay a quién resolver.
+      final api = await montar(tester, citas: [cita()]);
+
+      expect(api.citas, hasLength(1));
+      expect(find.textContaining('Paciente #'), findsNothing);
     });
   });
 }

@@ -147,10 +147,12 @@ expire. Consecuencias:
 |---|---|---|
 | POST | `/api/patients` | crea el perfil del usuario autenticado · 409 si ya existe |
 | GET/PATCH | `/api/patients/me` | 404 si no creó perfil |
+| GET | `/api/patients/{id}` | solo rol MEDICO con una cita con ese paciente · 403 si no · devuelve solo `idPaciente, idUsuario, nombres, apellidos` (`PatientBasicResponseDto`, no el perfil clínico completo) |
 | POST | `/api/doctors` | 409 si ya existe |
 | GET | `/api/doctors/me` | |
 | GET/PATCH | `/api/doctors/{id}` | PATCH → 403 si no es el titular |
 | PUT | `/api/doctors/{id}/especialidades` | `{ especialidadIds: number[] }` |
+| PATCH | `/api/doctors/{id}/verificacion` | solo rol ADMIN · `{ estado: 'VERIFICADO' \| 'RECHAZADO' }` · 403 si no es admin |
 
 **Lo que NO se puede editar.** `UpdatePatientDto` no incluye
 `documentoIdentidad` y `UpdateDoctorDto` no incluye `numExequatur`: los dos
@@ -159,8 +161,8 @@ edición debe mostrarlos como solo lectura, no como campos deshabilitados que
 sugieran que podrían habilitarse.
 
 **`estadoVerificacion`** (RF-11): `PENDIENTE` · `VERIFICADO` · `RECHAZADO`.
-No hay endpoint que lo cambie desde la app — lo mueve un administrador del
-lado servidor.
+Lo mueve `PATCH /doctors/{id}/verificacion`, solo ADMIN — la cola de
+verificación de `features/admin` es la única pantalla que lo usa.
 
 **Paciente** (`PatientResponseDto`): `idPaciente, idUsuario, nombres, apellidos,
 documentoIdentidad, fechaNacimiento` obligatorios; `sexo ('M'|'F'), direccion,
@@ -184,7 +186,7 @@ tercero (`doctor-ownership.guard.ts`).
 |---|---|---|
 | GET | `/api/specialties` | — (sin paginar, 10 sembradas) |
 | GET | `/api/specialties/{id}` | |
-| GET | `/api/doctors` | `page`, `limit`, **`especialidadId`** |
+| GET | `/api/doctors` | `page`, `limit`, `especialidadId`, `estadoVerificacion` |
 | GET | `/api/medical-centers` | — |
 
 - Paginación: `page` ≥ 1 (def. 1), `limit` 1–**50** (def. **10**). `limit=999`

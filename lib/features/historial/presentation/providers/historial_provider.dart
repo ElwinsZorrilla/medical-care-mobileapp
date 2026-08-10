@@ -76,7 +76,11 @@ class Historial extends _$Historial {
 }
 
 /// RF-25, RF-26 — registrar una consulta sobre una cita.
-@riverpod
+///
+/// `keepAlive`: mismo motivo que `Reserva` en `citas_provider.dart` — solo se
+/// lee `.notifier`, nunca se watchea, y un `autoDispose` sin listeners no
+/// sobrevive a una petición de red lenta.
+@Riverpod(keepAlive: true)
 class RegistroConsulta extends _$RegistroConsulta {
   @override
   void build() {}

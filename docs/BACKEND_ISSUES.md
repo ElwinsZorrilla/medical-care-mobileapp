@@ -250,29 +250,48 @@ clinica no puede quedar servido en una carpeta publica.
 ## #10 — El medico no puede saber quien le escribio
 
 **Encontrado:** 2026-08-05, construyendo la lista de conversaciones.
+**Cerrado:** 2026-08-10, primero para la agenda y despues para el chat —
+las dos, reportadas en uso real ("en mi agenda me gustaria que salga el
+nombre del paciente", despues "en los chats me gustaria que salga el
+nombre del paciente").
 
 `ConversacionResponseDto` devuelve `idPaciente` e `idMedico` y **ningun
 nombre**, igual que `AppointmentResponseDto`. Para las citas eso se resuelve
 pidiendo `GET /doctors/{id}` — es lo que hace `MedicoDirectorio`, con cache.
 
-En el chat solo funciona **una de las dos direcciones**:
+Hacia el otro lado había solo una de las dos direcciones:
 
 | Quien mira | Al otro lo resuelve | Ruta |
 | - | - | - |
 | Paciente | Si, por nombre | `GET /doctors/{id}` |
-| Medico | **No** | no existe `GET /patients/{id}` |
+| Medico, en su agenda | **Si, desde F17** | `GET /patients/{id}` |
+| Medico, en el chat | **Si, desde F17 — con matiz** | `GET /patients/{id}` |
 
-Verificado en `back/src/modules/patients/patients.controller.ts`: la unica
-ruta de lectura es `@Get('me')`. El medico no tiene forma de saber el nombre
-del paciente que le escribio.
+Se agregó `GET /patients/{id}` (`patients.controller.ts`), restringido con
+`PatientAppointmentGuard`: el médico autenticado solo lo resuelve si tiene
+**una cita** con ese paciente — nunca el directorio completo, porque los
+datos de un paciente son privados (a diferencia de `GET /doctors/{id}`, que
+es público). La respuesta es `PatientBasicResponseDto`: solo nombre, nada
+clínico ni el documento de identidad — un médico que agenda no necesita eso
+para pintar una tarjeta.
 
-**Mientras tanto:** la fila muestra `Paciente #7`. Es feo pero es cierto —
-mejor que inventar un nombre o dejar un numero suelto sin etiqueta. Hay una
-prueba que lo fija (`chat_screen_test.dart`, "el medico no puede ver el
-nombre del paciente") para que el dia que la ruta exista alguien la vea y la
-cambie.
+`MedicoDirectorio` (que resuelve médicos en `citas`) tiene ahora su simétrico
+del lado paciente: `core/data/paciente_directorio.dart`, mismo patrón de
+caché y coalescencia. `mis_citas_screen.dart` ya no dice `Paciente #7` en la
+agenda cuando el nombre se puede resolver.
 
-**Lo que haria falta del lado servidor:** o `GET /patients/{id}` restringido
-a medicos con una conversacion o cita con ese paciente, o —mejor— que
-`ConversacionResponseDto` traiga los dos nombres y se ahorre la peticion
+`conversaciones_screen.dart` reusa el mismo `PacienteDirectorio` para
+resolver el nombre en el hilo del médico.
+
+**El matiz que queda, a propósito.** El guard de `/patients/{id}` exige una
+*cita*, no una conversación — y una conversación puede existir sin que haya
+cita de por medio (RF-31 deja escribirle a un médico sin haber reservado
+nunca). En ese caso puntual el chat sigue cayendo a `Paciente #7`, igual que
+si la red fallara: no es un bug, es el límite documentado del guard. La
+prueba que lo fija (`chat_screen_test.dart`, "sin cita con ese paciente, cae
+al id etiquetado") lo deja explícito.
+
+**Lo que haría falta del lado servidor para cerrar ese último caso:** que el
+guard acepte *o* una cita *o* una conversación con ese paciente, o —mejor—
+que `ConversacionResponseDto` traiga los dos nombres y se ahorre la petición
 extra en las dos direcciones.

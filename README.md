@@ -96,7 +96,7 @@ razón escrita. Ninguno queda sin implementar.
 
 Los 10 que en F00 quedaron sin backend —notificaciones, chat y videollamada—
 ya tienen API y están construidos contra el servidor real, sin un solo mock de
-endpoint. El Swagger pasó de 29 rutas a **38**.
+endpoint. El Swagger pasó de 29 rutas a **40**.
 
 **Los 5 parciales son huecos del lado servidor**, no trabajo pendiente del
 front. En los cinco, la mitad que el backend soporta está construida y
@@ -125,8 +125,8 @@ lado servidor, en [`docs/BACKEND_ISSUES.md`](docs/BACKEND_ISSUES.md).
 
 | | |
 |---|---|
-| Cobertura de línea | 85.2 % excluyendo código generado — 82.6 % contándolo todo |
-| Pruebas | 638 (634 + 4 goldens que solo corren en Linux) |
+| Cobertura de línea | 84.8 % excluyendo código generado — 81.9 % contándolo todo |
+| Pruebas | 664 (660 + 4 goldens que solo corren en Linux) |
 | `flutter analyze --fatal-infos` | 0 |
 
 ## Documentación

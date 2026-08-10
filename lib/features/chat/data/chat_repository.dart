@@ -54,6 +54,10 @@ class ChatRepository {
   Future<Result<void>> marcarLeidos(int idConversacion) =>
       _envolver(() => _api.marcarLeidos(idConversacion));
 
+  /// Ids de medico con una cita activa — acceso rapido a chat.
+  Future<Result<List<int>>> medicosConCitaActiva() =>
+      _envolver(() => _api.medicosConCitaActiva());
+
   Conversacion _aConv(ConversacionDto d) => Conversacion(
     id: d.idConversacion,
     idPaciente: d.idPaciente,

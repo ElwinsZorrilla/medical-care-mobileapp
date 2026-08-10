@@ -17,12 +17,10 @@ void main() {
       expect(Rutas.deInicioPara(TipoUsuario.paciente), Rutas.misCitas);
     });
 
-    test('el admin no queda en una ruta inexistente', () {
-      // El panel de admin no es parte del alcance móvil. Devolver una ruta
-      // que no está registrada dejaría la app en pantalla negra.
-      final destino = Rutas.deInicioPara(TipoUsuario.admin);
-      expect(destino, isNotEmpty);
-      expect(destino, Rutas.misCitas);
+    test('el admin entra a la cola de verificación — RF-11', () {
+      // Es la única función que el admin tiene en el alcance móvil: no hay
+      // panel general, solo verificar/rechazar exequátures.
+      expect(Rutas.deInicioPara(TipoUsuario.admin), Rutas.verificacion);
     });
 
     test('todo rol tiene destino: el switch es exhaustivo', () {
@@ -46,6 +44,7 @@ void main() {
     test('las áreas por rol no son públicas', () {
       expect(Rutas.publicas, isNot(contains(Rutas.agenda)));
       expect(Rutas.publicas, isNot(contains(Rutas.misCitas)));
+      expect(Rutas.publicas, isNot(contains(Rutas.verificacion)));
     });
   });
 
@@ -57,6 +56,7 @@ void main() {
         Rutas.registro,
         Rutas.misCitas,
         Rutas.agenda,
+        Rutas.verificacion,
       ];
       expect(rutas.toSet().length, rutas.length);
     });
@@ -68,9 +68,18 @@ void main() {
         Rutas.registro,
         Rutas.misCitas,
         Rutas.agenda,
+        Rutas.verificacion,
       ]) {
         expect(r, startsWith('/'));
       }
+    });
+  });
+
+  group('área del admin — RF-11', () {
+    test('la cola de verificación cuelga del prefijo /admin', () {
+      // El guard compara con `startsWith(Rutas.admin)`: si algún día se
+      // agrega otra ruta de admin, entra sola sin tocar el guard.
+      expect(Rutas.verificacion, startsWith(Rutas.admin));
     });
   });
 }

@@ -66,4 +66,25 @@ class ChatApi {
   /// `PATCH /chat/conversations/{id}/leidos` — RF-33.
   Future<void> marcarLeidos(int idConversacion) =>
       _dio.patch<dynamic>('/chat/conversations/$idConversacion/leidos');
+
+  /// `GET /appointments/me` — solo para sacar `idMedico` de las citas
+  /// activas (PENDIENTE o CONFIRMADA), acceso rápido a chat desde una cita.
+  ///
+  /// No usa `CitaDto` de `features/citas`: un feature no importa de otro
+  /// (rubro 3.3), y acá solo hacen falta dos campos de la respuesta.
+  Future<List<int>> medicosConCitaActiva() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/appointments/me',
+      queryParameters: {'page': 1, 'limit': 50},
+    );
+    final data = (res.data?['data'] as List<dynamic>?) ?? const [];
+    final activos = <int>{};
+    for (final item in data) {
+      final m = item as Map<String, dynamic>;
+      if (m['estado'] == 'PENDIENTE' || m['estado'] == 'CONFIRMADA') {
+        activos.add(m['idMedico'] as int);
+      }
+    }
+    return activos.toList();
+  }
 }
