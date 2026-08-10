@@ -63,7 +63,13 @@ Future<PerfilMedico> perfilMedicoPorId(Ref ref, int idMedico) async {
 /// titular desde el token (RF-09). Para el medico si hace falta su `idMedico`,
 /// que sale de su propio perfil ya cargado, no de un campo que el cliente
 /// pueda elegir.
-@riverpod
+/// `keepAlive`: nada en la pantalla hace `ref.watch` de este provider —solo
+/// `.notifier` vía `ref.read`—, así que sin esto un `autoDispose` lo desecha
+/// en cuanto deja de tener listeners, que es *inmediatamente* después del
+/// `read`. Si la petición de red tarda, el `ref.invalidate` de después del
+/// `await` revienta con "Cannot use the Ref ... after it has been disposed."
+/// Reportado en uso real al completar el perfil de paciente.
+@Riverpod(keepAlive: true)
 class EdicionPerfil extends _$EdicionPerfil {
   @override
   void build() {}
