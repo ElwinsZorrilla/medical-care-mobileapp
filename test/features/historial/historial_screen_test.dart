@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medicare/core/data/medico_directorio.dart';
+import 'package:medicare/core/domain/medico.dart';
 import 'package:medicare/core/domain/tipo_usuario.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
@@ -90,6 +92,21 @@ const _consulta = ConsultaDto(
   ],
 );
 
+/// `ConsultaResponseDto` trae `idMedico` sin nombre — igual que `citas`.
+class _DirectorioFalso extends MedicoDirectorio {
+  _DirectorioFalso() : super(Dio());
+
+  @override
+  Future<PerfilMedico?> resolver(int idMedico) async => PerfilMedico(
+    idMedico: idMedico,
+    idUsuario: 900 + idMedico,
+    nombres: 'Ana$idMedico',
+    apellidos: 'Gomez',
+    numExequatur: 'EXQ-$idMedico',
+    estadoVerificacion: EstadoVerificacion.verificado,
+  );
+}
+
 void main() {
   setUpAll(() async => AppTime.init());
 
@@ -100,6 +117,7 @@ void main() {
     Duration demora = Duration.zero,
     TipoUsuario rol = TipoUsuario.paciente,
     bool asentar = true,
+    MedicoDirectorio? medicoDirectorio,
   }) async {
     final api = _ApiFalsa(consultas: consultas, status: status, demora: demora);
     await tester.pumpWidget(
@@ -115,6 +133,8 @@ void main() {
           historialRepositoryProvider.overrideWithValue(
             HistorialRepository(api),
           ),
+          if (medicoDirectorio != null)
+            medicoDirectorioProvider.overrideWithValue(medicoDirectorio),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -208,6 +228,43 @@ void main() {
       await montar(tester, consultas: const [_consulta]);
       // 2026-08-17 14:30Z → 17 de agosto, 10:30 en Santo Domingo.
       expect(find.textContaining('agosto'), findsOneWidget);
+    });
+  });
+
+  group('quién atendió — el paciente lo ve, el médico no lo necesita', () {
+    testWidgets('el paciente ve el nombre del médico', (tester) async {
+      await montar(
+        tester,
+        consultas: const [_consulta],
+        medicoDirectorio: _DirectorioFalso(),
+      );
+
+      expect(find.text('Dr. Ana5 Gomez'), findsOneWidget);
+    });
+
+    testWidgets('si no se resolvió, la consulta se pinta igual', (
+      tester,
+    ) async {
+      // Sin doble: sale a la red de verdad y falla rapido. El diagnostico
+      // sigue siendo util aunque el nombre no llegue.
+      await montar(tester, consultas: const [_consulta]);
+
+      expect(find.text('Médico #5'), findsOneWidget);
+      expect(find.text('Faringitis viral'), findsOneWidget);
+    });
+
+    testWidgets('el médico no ve un encabezado con su propio nombre', (
+      tester,
+    ) async {
+      await montar(
+        tester,
+        consultas: const [_consulta],
+        rol: TipoUsuario.medico,
+        medicoDirectorio: _DirectorioFalso(),
+      );
+
+      expect(find.textContaining('Dr. Ana'), findsNothing);
+      expect(find.textContaining('Médico #'), findsNothing);
     });
   });
 }
