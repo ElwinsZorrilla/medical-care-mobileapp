@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:medicare/core/data/medico_directorio.dart';
+import 'package:medicare/core/data/paciente_directorio.dart';
 import 'package:medicare/core/domain/medico.dart';
+import 'package:medicare/core/domain/paciente.dart';
 import 'package:medicare/core/network/politica_reintento.dart';
 import 'package:medicare/core/theme/app_theme.dart';
 import 'package:medicare/core/time/app_time.dart';
@@ -176,32 +178,55 @@ class _DirectorioFalso extends MedicoDirectorio {
   );
 }
 
+/// `GET /patients/{id}` resuelve solo si el médico tiene una cita con ese
+/// paciente (BACKEND_ISSUES.md #10) — este doble simula el caso en que sí.
+class _PacienteDirectorioFalso extends PacienteDirectorio {
+  _PacienteDirectorioFalso() : super(Dio());
+
+  @override
+  Future<PacienteBasico?> resolver(int idPaciente) async => PacienteBasico(
+    idPaciente: idPaciente,
+    idUsuario: 700 + idPaciente,
+    nombres: 'Sofia$idPaciente',
+    apellidos: 'Reyes',
+  );
+}
+
 void main() {
   setUpAll(AppTime.init);
 
-  Widget envolver(Widget hijo, _ApiFalsa api, {_SocketFalso? socket}) =>
-      ProviderScope(
-        // La misma que usa `main.dart`. Con el default de Riverpod un fallo se
-        // queda en `AsyncLoading` ~38 s y el `ErrorState` nunca aparece.
-        retry: PoliticaReintento.decidir,
-        overrides: [
-          chatRepositoryProvider.overrideWithValue(ChatRepository(api)),
-          chatSocketProvider.overrideWith((ref) async => socket),
-          // `ConversacionResponseDto` solo trae ids: el nombre se resuelve
-          // aparte. Sin este doble, la lista intentaria una peticion real.
-          medicoDirectorioProvider.overrideWithValue(_DirectorioFalso()),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          // La pulsacion del skeleton es `repeat(reverse: true)`: mientras uno
-          // este montado, `pumpAndSettle` nunca asienta.
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(disableAnimations: true),
-            child: child!,
-          ),
-          home: hijo,
-        ),
-      );
+  Widget envolver(
+    Widget hijo,
+    _ApiFalsa api, {
+    _SocketFalso? socket,
+    PacienteDirectorio? pacienteDirectorio,
+  }) => ProviderScope(
+    // La misma que usa `main.dart`. Con el default de Riverpod un fallo se
+    // queda en `AsyncLoading` ~38 s y el `ErrorState` nunca aparece.
+    retry: PoliticaReintento.decidir,
+    overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(api)),
+      chatSocketProvider.overrideWith((ref) async => socket),
+      // `ConversacionResponseDto` solo trae ids: el nombre se resuelve
+      // aparte. Sin este doble, la lista intentaria una peticion real.
+      medicoDirectorioProvider.overrideWithValue(_DirectorioFalso()),
+      // Sin override, el directorio de pacientes sale a la red de verdad
+      // y falla rapido: es el caso "no tiene cita con ese paciente" que
+      // prueba "el nombre del paciente no siempre se resuelve".
+      if (pacienteDirectorio != null)
+        pacienteDirectorioProvider.overrideWithValue(pacienteDirectorio),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.light(),
+      // La pulsacion del skeleton es `repeat(reverse: true)`: mientras uno
+      // este montado, `pumpAndSettle` nunca asienta.
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: child!,
+      ),
+      home: hijo,
+    ),
+  );
 
   Future<void> asentar(WidgetTester tester) async {
     await tester.pumpAndSettle();
@@ -219,6 +244,7 @@ void main() {
     bool esperar = true,
     bool esMedico = false,
     List<int> citaActivaCon = const [],
+    PacienteDirectorio? pacienteDirectorio,
   }) async {
     final api = _ApiFalsa(
       status: status,
@@ -227,7 +253,11 @@ void main() {
       citaActivaCon: citaActivaCon,
     );
     await tester.pumpWidget(
-      envolver(ConversacionesScreen(esMedico: esMedico), api),
+      envolver(
+        ConversacionesScreen(esMedico: esMedico),
+        api,
+        pacienteDirectorio: pacienteDirectorio,
+      ),
     );
     if (esperar) await asentar(tester);
     return api;
@@ -295,14 +325,29 @@ void main() {
       expect(find.text('3'), findsOneWidget);
     });
 
-    testWidgets('el medico no puede ver el nombre del paciente', (
+    testWidgets('si el medico tiene cita con el paciente, ve su nombre', (
       tester,
     ) async {
-      // No es una omision: la unica ruta de `patients` es `/me`
-      // (BACKEND_ISSUES #10), asi que el nombre no se puede resolver. Se
-      // muestra el id etiquetado en vez de inventar uno o dejar un numero
-      // suelto. Esta prueba existe para que el dia que el backend agregue
-      // `GET /patients/{id}` alguien la vea y la cambie.
+      // GET /patients/{id} existe desde F17, restringido a que el medico
+      // tenga una cita con ese paciente (BACKEND_ISSUES #10, cerrado del
+      // lado de citas y de chat).
+      await montarLista(
+        tester,
+        esMedico: true,
+        pacienteDirectorio: _PacienteDirectorioFalso(),
+      );
+
+      expect(find.text('Sofia7 Reyes'), findsNWidgets(2));
+      expect(find.textContaining('Paciente #'), findsNothing);
+    });
+
+    testWidgets('sin cita con ese paciente, cae al id etiquetado', (
+      tester,
+    ) async {
+      // Un paciente puede escribirle a un medico sin haber reservado nunca
+      // (RF-31 desde la busqueda): ahi el guard de `/patients/{id}` da 403
+      // y no hay nombre que mostrar. Sin override, el directorio sale a la
+      // red de verdad y falla rapido — es justo ese caso.
       await montarLista(tester, esMedico: true);
 
       expect(find.text('Paciente #7'), findsNWidgets(2));

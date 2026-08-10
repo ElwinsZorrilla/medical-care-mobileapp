@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/data/medico_directorio.dart';
+import '../../../../core/data/paciente_directorio.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -166,14 +167,14 @@ class _ChipMedico extends ConsumerWidget {
 ///
 /// **La respuesta solo trae ids.** `ConversacionResponseDto` devuelve
 /// `idPaciente` e `idMedico` y ningún nombre, así que hay que resolverlo
-/// aparte — igual que las citas, y por eso se reusa `MedicoDirectorio`, que ya
-/// cachea y coalesce las peticiones repetidas.
+/// aparte — igual que las citas, y por eso se reusan `MedicoDirectorio` y
+/// `PacienteDirectorio`, que ya cachean y coalescen las peticiones repetidas.
 ///
-/// **Y solo se puede resolver una de las dos direcciones.** El paciente ve el
-/// nombre del médico porque existe `GET /doctors/{id}`. El médico **no** puede
-/// ver el del paciente: la única ruta de `patients` es `/me`
-/// ([#10](../../../../../docs/BACKEND_ISSUES.md)). Ahí se muestra el id con su
-/// etiqueta en vez de inventar un nombre o dejar un número suelto.
+/// **El lado paciente resuelve siempre** (`GET /doctors/{id}` es público).
+/// **El lado médico solo resuelve si tiene una cita con ese paciente**
+/// (`GET /patients/{id}`, restringido — BACKEND_ISSUES.md #10). Un paciente
+/// puede escribirle a un médico sin haber reservado nunca: ahí cae al id
+/// etiquetado, igual que si la red fallara.
 class _Titulo extends ConsumerWidget {
   const _Titulo({
     required this.conversacion,
@@ -188,7 +189,16 @@ class _Titulo extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (esMedico) {
-      return Text('Paciente #${conversacion.idPaciente}', style: estilo);
+      return FutureBuilder(
+        future: ref
+            .watch(pacienteDirectorioProvider)
+            .resolver(conversacion.idPaciente),
+        builder: (context, snapshot) => Text(
+          snapshot.data?.nombreCompleto ??
+              'Paciente #${conversacion.idPaciente}',
+          style: estilo,
+        ),
+      );
     }
 
     return FutureBuilder(
