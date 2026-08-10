@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/data/medico_directorio.dart';
 import '../../../../core/domain/pagina.dart';
 import '../../../../core/domain/tipo_usuario.dart';
 import '../../../../core/error/failure.dart';
@@ -80,17 +81,22 @@ class _HistorialScreenState extends ConsumerState<HistorialScreen> {
                       : 'Después de tu primera consulta verás acá el '
                             'diagnóstico y las recetas.',
                 )
-              : _Lista(pagina: value, scroll: _scroll),
+              : _Lista(pagina: value, scroll: _scroll, esMedico: esMedico),
       },
     );
   }
 }
 
 class _Lista extends StatelessWidget {
-  const _Lista({required this.pagina, required this.scroll});
+  const _Lista({
+    required this.pagina,
+    required this.scroll,
+    required this.esMedico,
+  });
 
   final Pagina<Consulta> pagina;
   final ScrollController scroll;
+  final bool esMedico;
 
   @override
   Widget build(BuildContext context) {
@@ -108,19 +114,22 @@ class _Lista extends StatelessWidget {
             child: Center(child: LoadingSkeleton(height: Space.xl)),
           );
         }
-        return _TarjetaConsulta(consulta: pagina.items[i]);
+        return _TarjetaConsulta(consulta: pagina.items[i], esMedico: esMedico);
       },
     );
   }
 }
 
-class _TarjetaConsulta extends StatelessWidget {
-  const _TarjetaConsulta({required this.consulta});
+class _TarjetaConsulta extends ConsumerWidget {
+  const _TarjetaConsulta({required this.consulta, required this.esMedico});
 
   final Consulta consulta;
 
+  /// Solo el paciente ve "quién lo atendió" — el médico ya sabe quién es él.
+  final bool esMedico;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = context.text;
     final density = context.density;
 
@@ -129,6 +138,18 @@ class _TarjetaConsulta extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (!esMedico) ...[
+            FutureBuilder(
+              future: ref
+                  .watch(medicoDirectorioProvider)
+                  .resolver(consulta.idMedico),
+              builder: (context, snapshot) => Text(
+                snapshot.data?.nombreCompleto ?? 'Médico #${consulta.idMedico}',
+                style: text.heading,
+              ),
+            ),
+            SizedBox(height: density.separacionLista),
+          ],
           Text(AppTime.fechaLarga(consulta.registradaUtc), style: text.caption),
           SizedBox(height: density.separacionLista),
 
