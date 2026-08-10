@@ -233,11 +233,14 @@ void main() {
       // La primera pantalla.
       'splash',
       // Destinos de `Rutas.deInicioPara` tras autenticarse.
-      'misCitas', 'agenda',
+      'misCitas', 'agenda', 'verificacion',
       // El `redirect` manda aca cuando no hay sesion.
       'login',
       // Se llega desde login.
       'registro',
+      // Prefijo del guard de rol para el area de ADMIN, no una ruta
+      // navegable en si — ninguna pantalla usa `Rutas.admin` como destino.
+      'admin',
     };
 
     test('ninguna ruta queda sin origen de navegacion', () {

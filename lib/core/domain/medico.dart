@@ -5,9 +5,10 @@ import 'especialidad.dart';
 
 /// Estado de verificación del médico — RF-11.
 ///
-/// Lo mueve un administrador del lado servidor: **no hay endpoint que lo
-/// cambie desde la app**. Por eso la UI lo muestra y lo explica, pero no
-/// ofrece ninguna acción para modificarlo.
+/// Lo mueve un administrador: `PATCH /doctors/:id/verificacion`, solo rol
+/// ADMIN. La UI de paciente/médico lo muestra y lo explica pero no ofrece
+/// ninguna acción — quien la tiene es `features/admin` (la cola de
+/// verificación), que es la única pantalla que puede moverlo.
 enum EstadoVerificacion {
   pendiente('PENDIENTE'),
   verificado('VERIFICADO'),

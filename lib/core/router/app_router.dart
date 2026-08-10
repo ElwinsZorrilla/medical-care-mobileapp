@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/admin/presentation/screens/verificacion_screen.dart';
 import '../../features/agenda/presentation/screens/disponibilidad_screen.dart';
 import '../../features/auth/domain/usuario.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -58,12 +59,16 @@ GoRouter appRouter(Ref ref) {
       // llegar directo — por ejemplo desde una notificación.
       final areaMedico = yendoA.startsWith(Rutas.agenda);
       final areaPaciente = yendoA.startsWith(Rutas.misCitas);
+      final areaAdmin = yendoA.startsWith(Rutas.admin);
       final tipo = sesion.usuario!.tipo;
 
       if (areaMedico && tipo != TipoUsuario.medico) {
         return Rutas.deInicioPara(tipo);
       }
       if (areaPaciente && tipo != TipoUsuario.paciente) {
+        return Rutas.deInicioPara(tipo);
+      }
+      if (areaAdmin && tipo != TipoUsuario.admin) {
         return Rutas.deInicioPara(tipo);
       }
 
@@ -188,6 +193,11 @@ GoRouter appRouter(Ref ref) {
         name: 'perfil',
         builder: (context, state) => const PerfilScreen(),
       ),
+      GoRoute(
+        path: Rutas.verificacion,
+        name: 'verificacion',
+        builder: (context, state) => const VerificacionScreen(),
+      ),
     ],
   );
 }
@@ -270,6 +280,12 @@ abstract final class Rutas {
   /// asi que no hay parametro de paciente que alguien pueda manipular.
   static const String historial = '/historial';
 
+  /// Area exclusiva del rol ADMIN. Prefijo para el guard, no una ruta en si.
+  static const String admin = '/admin';
+
+  /// Cola de exequaturs pendientes de verificar — RF-11, lado admin.
+  static const String verificacion = '/admin/verificacion';
+
   /// Accesibles sin sesión.
   static const Set<String> publicas = {login, registro};
 
@@ -277,8 +293,8 @@ abstract final class Rutas {
   static String deInicioPara(TipoUsuario tipo) => switch (tipo) {
     TipoUsuario.medico => agenda,
     TipoUsuario.paciente => misCitas,
-    // El panel de admin no es parte del alcance móvil; se le da la vista de
-    // paciente para que la app no quede en una ruta que no existe.
-    TipoUsuario.admin => misCitas,
+    // RF-11 — la cola de verificación de exequátur es la única función
+    // que el admin tiene en el alcance móvil.
+    TipoUsuario.admin => verificacion,
   };
 }
