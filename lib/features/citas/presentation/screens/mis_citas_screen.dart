@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/domain/cita_estado.dart';
 import '../../../../core/domain/medico.dart';
 import '../../../../core/domain/modalidad.dart';
+import '../../../../core/domain/paciente.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -283,6 +284,7 @@ class _Lista extends ConsumerWidget {
         return _TarjetaCita(
           cita: cita,
           medico: estado.medicos[cita.idMedico],
+          paciente: estado.pacientes[cita.idPaciente],
           agenda: agenda,
         );
       },
@@ -292,13 +294,22 @@ class _Lista extends ConsumerWidget {
 
 /// La tarjeta con el riel de estado — el elemento firma del sistema.
 class _TarjetaCita extends ConsumerWidget {
-  const _TarjetaCita({required this.cita, required this.agenda, this.medico});
+  const _TarjetaCita({
+    required this.cita,
+    required this.agenda,
+    this.medico,
+    this.paciente,
+  });
 
   final Cita cita;
 
   /// `null` mientras el nombre no se resolvió. La tarjeta se pinta igual:
   /// fecha, hora y estado ya son útiles.
   final PerfilMedico? medico;
+
+  /// `null` mientras no se resolvió —o si el médico no tiene cita con ese
+  /// paciente, que no debería pasar acá pero el directorio no lo asume.
+  final PacienteBasico? paciente;
 
   final bool agenda;
 
@@ -314,7 +325,7 @@ class _TarjetaCita extends ConsumerWidget {
         children: [
           Text(
             agenda
-                ? 'Paciente #${cita.idPaciente}'
+                ? paciente?.nombreCompleto ?? 'Paciente #${cita.idPaciente}'
                 : medico?.nombreCompleto ?? 'Médico #${cita.idMedico}',
             style: text.heading,
           ),

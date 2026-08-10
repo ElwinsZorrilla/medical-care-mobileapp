@@ -1,9 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/data/medico_directorio.dart';
+import '../../../../core/data/paciente_directorio.dart';
 import '../../../../core/data/turnos_repository.dart';
 import '../../../../core/domain/cita_estado.dart';
 import '../../../../core/domain/medico.dart';
+import '../../../../core/domain/paciente.dart';
 import '../../../../core/domain/pagina.dart';
 import '../../../../core/domain/turno.dart';
 import '../../../../core/error/failure.dart';
@@ -40,6 +42,7 @@ class CitasState {
   const CitasState({
     required this.pagina,
     this.medicos = const {},
+    this.pacientes = const {},
     this.errorAlPaginar,
   });
 
@@ -47,6 +50,10 @@ class CitasState {
 
   /// Nombres ya resueltos. Lo que falte se pinta sin nombre, no en blanco.
   final Map<int, PerfilMedico> medicos;
+
+  /// Nombres de paciente ya resueltos — solo se llena en la agenda del
+  /// médico (BACKEND_ISSUES.md #10).
+  final Map<int, PacienteBasico> pacientes;
 
   final Object? errorAlPaginar;
 
@@ -68,7 +75,11 @@ class ListadoCitas extends _$ListadoCitas {
   Future<CitasState> build({bool agenda = false}) async {
     _esAgenda = agenda;
     final pagina = await _pedir(1);
-    return CitasState(pagina: pagina, medicos: await _resolverMedicos(pagina));
+    return CitasState(
+      pagina: pagina,
+      medicos: await _resolverMedicos(pagina),
+      pacientes: await _resolverPacientes(pagina),
+    );
   }
 
   Future<void> cargarMas() async {
@@ -80,7 +91,11 @@ class ListadoCitas extends _$ListadoCitas {
       final siguiente = await _pedir(actual.pagina.siguientePagina);
       final unida = actual.pagina.concatenar(siguiente);
       state = AsyncData(
-        CitasState(pagina: unida, medicos: await _resolverMedicos(unida)),
+        CitasState(
+          pagina: unida,
+          medicos: await _resolverMedicos(unida),
+          pacientes: await _resolverPacientes(unida),
+        ),
       );
     } on Object catch (e) {
       // No se pierde lo cargado: falló la página siguiente, no lo que el
@@ -89,6 +104,7 @@ class ListadoCitas extends _$ListadoCitas {
         CitasState(
           pagina: actual.pagina,
           medicos: actual.medicos,
+          pacientes: actual.pacientes,
           errorAlPaginar: e,
         ),
       );
@@ -139,6 +155,23 @@ class ListadoCitas extends _$ListadoCitas {
       for (final c in pagina.items) c.idMedico: ?directorio.enCache(c.idMedico),
     };
   }
+
+  /// Resuelve los nombres de los pacientes de la agenda — RF-24,
+  /// BACKEND_ISSUES.md #10. Simétrico a [_resolverMedicos].
+  Future<Map<int, PacienteBasico>> _resolverPacientes(
+    Pagina<Cita> pagina,
+  ) async {
+    // Las citas del propio paciente no tienen a quién resolver: es él mismo.
+    if (!_esAgenda) return const {};
+
+    final directorio = ref.read(pacienteDirectorioProvider);
+    await directorio.precargar(pagina.items.map((c) => c.idPaciente));
+
+    return {
+      for (final c in pagina.items)
+        c.idPaciente: ?directorio.enCache(c.idPaciente),
+    };
+  }
 }
 
 // ── Reserva — RF-18, RF-19, RF-20, RF-21 ───────────────────────────────────
@@ -179,7 +212,13 @@ Future<List<Turno>> turnosDeMedico(Ref ref, int idMedico) async {
 }
 
 /// RF-19, RF-20, RF-21 — reservar.
-@riverpod
+///
+/// `keepAlive`: solo se le hace `ref.read(...).notifier`, nunca `ref.watch`.
+/// Un `autoDispose` sin listeners se desecha apenas termina el `read`, y si
+/// la petición de red tarda, el `ref.invalidate` de después del `await` usa
+/// un `Ref` ya muerto. Mismo defecto que tenía `EdicionPerfil`, reportado en
+/// uso real.
+@Riverpod(keepAlive: true)
 class Reserva extends _$Reserva {
   @override
   void build() {}
