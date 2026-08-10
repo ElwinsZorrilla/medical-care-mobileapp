@@ -72,6 +72,17 @@ String _origen(String apiBaseUrl) {
       : sinBarra;
 }
 
+/// Medicos con cita activa (PENDIENTE o CONFIRMADA) — acceso rapido a chat
+/// desde `ConversacionesScreen`, sin pasar por la busqueda.
+@riverpod
+Future<List<int>> medicosConCitaActiva(Ref ref) async {
+  final r = await ref.watch(chatRepositoryProvider).medicosConCitaActiva();
+  return switch (r) {
+    Ok(:final valor) => valor,
+    Fallo(:final failure) => throw failure,
+  };
+}
+
 /// Hilos del usuario — RF-31.
 @riverpod
 class Conversaciones extends _$Conversaciones {

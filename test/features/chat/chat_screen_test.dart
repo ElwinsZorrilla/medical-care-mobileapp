@@ -32,16 +32,22 @@ class _ApiFalsa extends ChatApi {
     this.status,
     this.sinConversaciones = false,
     this.demora = Duration.zero,
+    this.citaActivaCon = const [],
   }) : super(Dio());
 
   final int totalMensajes;
   final bool sinConversaciones;
   final Duration demora;
+  final List<int> citaActivaCon;
   int? status;
 
   int enviados = 0;
   int marcados = 0;
+  int? idAbierto;
   final List<int?> cursores = [];
+
+  @override
+  Future<List<int>> medicosConCitaActiva() async => citaActivaCon;
 
   DioException _error(int s) {
     final o = RequestOptions(path: '/chat/conversations');
@@ -71,6 +77,7 @@ class _ApiFalsa extends ChatApi {
 
   @override
   Future<ConversacionDto> abrir(int idMedico) async {
+    idAbierto = idMedico;
     if (status != null) throw _error(status!);
     return const ConversacionDto(idConversacion: 1, idPaciente: 7, idMedico: 9);
   }
@@ -211,11 +218,13 @@ void main() {
     Duration demora = Duration.zero,
     bool esperar = true,
     bool esMedico = false,
+    List<int> citaActivaCon = const [],
   }) async {
     final api = _ApiFalsa(
       status: status,
       sinConversaciones: vacia,
       demora: demora,
+      citaActivaCon: citaActivaCon,
     );
     await tester.pumpWidget(
       envolver(ConversacionesScreen(esMedico: esMedico), api),
@@ -327,6 +336,37 @@ void main() {
 
       expect(find.byType(ErrorState), findsNothing);
       expect(find.byType(AppCard), findsNWidgets(2));
+    });
+  });
+
+  group('acceso rapido — cita activa', () {
+    testWidgets('sin citas activas no aparece el atajo', (tester) async {
+      await montarLista(tester);
+
+      expect(find.text('Citas activas'), findsNothing);
+    });
+
+    testWidgets('con una cita activa aparece el medico', (tester) async {
+      // 5 no es ninguno de los medicos con conversacion ya abierta (9 y 11):
+      // sin eso, el nombre podria aparecer tambien en la lista de hilos y la
+      // prueba no distinguiria de donde viene.
+      await montarLista(tester, citaActivaCon: [5]);
+
+      expect(find.text('Citas activas'), findsOneWidget);
+      expect(find.text('Dr. Ana5 Gomez'), findsOneWidget);
+    });
+
+    // Que tocarlo abra (o recupere) la conversacion ya lo prueba
+    // "RF-31 — abrir el chat desde la busqueda": el chip navega a la misma
+    // ruta puente (`Rutas.abrirChatCon`) que ese flujo, y `envolver()` acá
+    // no monta un GoRouter para poder ejercer la navegacion en si.
+
+    testWidgets('el medico no ve el atajo: es solo para el paciente', (
+      tester,
+    ) async {
+      await montarLista(tester, esMedico: true, citaActivaCon: [9]);
+
+      expect(find.text('Citas activas'), findsNothing);
     });
   });
 

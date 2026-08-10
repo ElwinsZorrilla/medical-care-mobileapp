@@ -29,32 +29,134 @@ class ConversacionesScreen extends ConsumerWidget {
 
     return AppScaffold(
       titulo: 'Mensajes',
-      body: switch (hilos) {
-        AsyncLoading<List<Conversacion>>() => Padding(
-          padding: const EdgeInsets.all(Space.lg),
-          child: LoadingSkeleton.lineas(context, cantidad: 6),
+      body: Column(
+        children: [
+          // Acceso rapido desde una cita activa: el paciente no deberia
+          // tener que pasar por la busqueda para escribirle al medico con
+          // el que ya tiene turno.
+          if (!esMedico) const _AccesoRapidoCitaActiva(),
+          Expanded(
+            child: switch (hilos) {
+              AsyncLoading<List<Conversacion>>() => Padding(
+                padding: const EdgeInsets.all(Space.lg),
+                child: LoadingSkeleton.lineas(context, cantidad: 6),
+              ),
+              AsyncError<List<Conversacion>>(:final error) => ErrorState(
+                mensaje: error is Failure ? error.mensaje : 'Algo salio mal.',
+                onReintentar: () => ref.invalidate(conversacionesProvider),
+              ),
+              AsyncData<List<Conversacion>>(:final value) =>
+                value.isEmpty
+                    ? const EmptyState(
+                        icono: Icons.forum_outlined,
+                        titulo: 'Todavia no tienes mensajes',
+                        detalle:
+                            'Puedes escribirle a un medico desde su ficha en '
+                            'la busqueda.',
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(Space.lg),
+                        itemCount: value.length,
+                        separatorBuilder: (_, _) =>
+                            SizedBox(height: context.density.separacionLista),
+                        itemBuilder: (context, i) =>
+                            _Fila(conversacion: value[i], esMedico: esMedico),
+                      ),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chips horizontales con los medicos de citas PENDIENTE/CONFIRMADA.
+///
+/// No filtra contra las conversaciones ya abiertas: tocar un medico con el
+/// que ya hay hilo simplemente lo reabre — `POST /chat/conversations` es
+/// idempotente. Si no hay ninguna cita activa, no ocupa espacio.
+class _AccesoRapidoCitaActiva extends ConsumerWidget {
+  const _AccesoRapidoCitaActiva();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final medicos = ref.watch(medicosConCitaActivaProvider);
+
+    return switch (medicos) {
+      AsyncData<List<int>>(:final value) when value.isNotEmpty => Padding(
+        padding: const EdgeInsets.only(top: Space.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+              child: Text('Citas activas', style: context.text.caption),
+            ),
+            const SizedBox(height: Space.sm),
+            SizedBox(
+              height: Space.huge,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                itemCount: value.length,
+                separatorBuilder: (_, _) => const SizedBox(width: Space.sm),
+                itemBuilder: (context, i) => _ChipMedico(idMedico: value[i]),
+              ),
+            ),
+          ],
         ),
-        AsyncError<List<Conversacion>>(:final error) => ErrorState(
-          mensaje: error is Failure ? error.mensaje : 'Algo salio mal.',
-          onReintentar: () => ref.invalidate(conversacionesProvider),
-        ),
-        AsyncData<List<Conversacion>>(:final value) =>
-          value.isEmpty
-              ? const EmptyState(
-                  icono: Icons.forum_outlined,
-                  titulo: 'Todavia no tienes mensajes',
-                  detalle:
-                      'Puedes escribirle a un medico desde su ficha en la '
-                      'busqueda.',
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(Space.lg),
-                  itemCount: value.length,
-                  separatorBuilder: (_, _) =>
-                      SizedBox(height: context.density.separacionLista),
-                  itemBuilder: (context, i) =>
-                      _Fila(conversacion: value[i], esMedico: esMedico),
-                ),
+      ),
+      // Cargando, sin citas activas, o fallo: no bloquea la lista de
+      // conversaciones. Es un atajo, no la pantalla principal.
+      _ => const SizedBox.shrink(),
+    };
+  }
+}
+
+class _ChipMedico extends ConsumerWidget {
+  const _ChipMedico({required this.idMedico});
+
+  final int idMedico;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final text = context.text;
+
+    return FutureBuilder(
+      future: ref.watch(medicoDirectorioProvider).resolver(idMedico),
+      builder: (context, snapshot) {
+        final nombre = snapshot.data?.nombreCompleto ?? 'Médico #$idMedico';
+        return Semantics(
+          button: true,
+          label: 'Escribirle a $nombre',
+          child: InkWell(
+            onTap: () => context.push(Rutas.abrirChatCon(idMedico)),
+            borderRadius: Radii.chip,
+            child: Container(
+              alignment: Alignment.center,
+              constraints: const BoxConstraints(minHeight: kTactilMinimo),
+              padding: const EdgeInsets.symmetric(horizontal: Space.md),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: Radii.chip,
+                border: Border.all(color: colors.filete, width: Strokes.filete),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: Space.md,
+                    color: colors.verde,
+                  ),
+                  const SizedBox(width: Space.xs),
+                  Text(nombre, style: text.bodyStrong),
+                ],
+              ),
+            ),
+          ),
+        );
       },
     );
   }
