@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/config/env.dart';
 import '../../../../core/data/medico_directorio.dart';
 import '../../../../core/data/paciente_directorio.dart';
 import '../../../../core/data/turnos_repository.dart';
@@ -14,6 +15,7 @@ import '../../../../core/network/result.dart';
 import '../../../../core/time/app_time.dart';
 import '../../data/citas_api.dart';
 import '../../data/citas_repository.dart';
+import '../../data/citas_socket.dart';
 import '../../domain/cita.dart';
 
 part 'citas_provider.g.dart';
@@ -21,6 +23,41 @@ part 'citas_provider.g.dart';
 @Riverpod(keepAlive: true)
 CitasRepository citasRepository(Ref ref) =>
     CitasRepository(CitasApi(ref.watch(dioClienteProvider)));
+
+/// Socket de tiempo real de citas.
+///
+/// `keepAlive`, no lanza, no se cuelga: misma justificación que
+/// `chatSocketProvider` en `chat_provider.dart`. Sin socket, la pantalla
+/// sigue andando por REST; lo único que se pierde es que un cambio ajeno
+/// (la contraparte cancelando) se vea sin reabrir la pantalla.
+@Riverpod(keepAlive: true)
+Future<CitasSocket?> citasSocket(Ref ref) async {
+  try {
+    final token = await ref
+        .watch(secureStoreProvider)
+        .leerAccessToken()
+        .timeout(const Duration(seconds: 3));
+    if (token == null || token.isEmpty) return null;
+
+    final socket = CitasSocket(urlBase: _origen(Env.apiBaseUrl), token: token)
+      ..conectar();
+    ref.onDispose(socket.cerrar);
+    return socket;
+  } on Object {
+    return null;
+  }
+}
+
+/// Quita el sufijo `/api`: el namespace del socket cuelga de la raiz del
+/// servidor, no del prefijo REST.
+String _origen(String apiBaseUrl) {
+  final sinBarra = apiBaseUrl.endsWith('/')
+      ? apiBaseUrl.substring(0, apiBaseUrl.length - 1)
+      : apiBaseUrl;
+  return sinBarra.endsWith('/api')
+      ? sinBarra.substring(0, sinBarra.length - 4)
+      : sinBarra;
+}
 
 /// Caché de médicos — resuelve el N+1 de los listados.
 ///
@@ -74,6 +111,16 @@ class ListadoCitas extends _$ListadoCitas {
   @override
   Future<CitasState> build({bool agenda = false}) async {
     _esAgenda = agenda;
+
+    // Se engancha antes de pedir: un cambio que llegue mientras carga la
+    // página se perdería si el oyente se atara después. Esperar acá es
+    // seguro porque `citasSocket` no lanza ni se cuelga.
+    final socket = await ref.watch(citasSocketProvider.future);
+    if (socket != null) {
+      final sub = socket.citasCambiaron.listen((_) => ref.invalidateSelf());
+      ref.onDispose(sub.cancel);
+    }
+
     final pagina = await _pedir(1);
     return CitasState(
       pagina: pagina,
@@ -196,19 +243,31 @@ class DiaReserva extends _$DiaReserva {
 
   void seleccionar(DateTime diaUtc) => state = diaUtc;
 
-  void avanzar(int dias) => state = state.add(Duration(days: dias));
+  /// No deja retroceder antes de hoy: un turno de un día que ya pasó nunca
+  /// es reservable, así que no tiene sentido poder mirarlo.
+  void avanzar(int dias) {
+    final propuesto = state.add(Duration(days: dias));
+    final hoyInicio = AppTime.inicioDiaLocalEnUtc(AppTime.ahoraUtc());
+    state = propuesto.isBefore(hoyInicio) ? hoyInicio : propuesto;
+  }
 }
 
 /// Turnos libres del medico en el dia seleccionado — RF-18.
+///
+/// Se descartan los que ya empezaron: el backend ya no los devuelve, pero un
+/// turno pedido justo antes de que el reloj cruce esa hora podría llegar acá
+/// todavía vigente y quedar vencido mientras el usuario mira la grilla.
 @riverpod
 Future<List<Turno>> turnosDeMedico(Ref ref, int idMedico) async {
   final r = await ref
       .watch(turnosRepositoryProvider)
       .turnos(idMedico: idMedico, diaUtc: ref.watch(diaReservaProvider));
-  return switch (r) {
+  final turnos = switch (r) {
     Ok(:final valor) => valor,
     Fallo(:final failure) => throw failure,
   };
+  final ahora = AppTime.ahoraUtc();
+  return turnos.where((t) => t.inicioUtc.isAfter(ahora)).toList();
 }
 
 /// RF-19, RF-20, RF-21 — reservar.

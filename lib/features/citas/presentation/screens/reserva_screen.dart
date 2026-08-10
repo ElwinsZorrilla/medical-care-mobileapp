@@ -197,7 +197,11 @@ class _SelectorDia extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
-          onPressed: () => ref.read(diaReservaProvider.notifier).avanzar(-1),
+          // Deshabilitado en el día de hoy: no hay a dónde retroceder, un
+          // día ya pasado nunca tiene turnos reservables.
+          onPressed: AppTime.mismoDiaLocal(dia, AppTime.ahoraUtc())
+              ? null
+              : () => ref.read(diaReservaProvider.notifier).avanzar(-1),
           icon: const Icon(Icons.chevron_left),
           tooltip: 'Día anterior',
         ),
